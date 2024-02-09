@@ -1,6 +1,19 @@
 require("@nomicfoundation/hardhat-toolbox");
-
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.19",
+  networks: {
+    localhost: {
+      url: "http://127.0.0.1:8545"
+    },
+    hardhat: {
+      forking: {
+        url: "https://eth-mainnet.g.alchemy.com/v2/KwqrdbT8DUbOjW62kYjyTSceXzjMj2eG"
+      },
+      accounts: [{
+        privateKey: '0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e', // Replace YOUR_PRIVATE_KEY with the actual private key
+        balance: '10000000000000000000000' // 10000 ETH in Wei
+      }]
+    }
+  },
+  solidity: "0.8.20"
 };

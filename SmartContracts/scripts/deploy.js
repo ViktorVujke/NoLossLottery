@@ -1,32 +1,60 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// You can also run a script with `npx hardhat run <script>`. If you do that, Hardhat
-// will compile your contracts, add the Hardhat Runtime Environment's members to the
-// global scope, and execute the script.
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
+  const provider = new hre.ethers.JsonRpcProvider();
+  // Use the private key to create a wallet signer
+  const privateKey = "0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e";
+  const wallet = new hre.ethers.Wallet(privateKey, provider);
 
-  const lockedAmount = hre.ethers.parseEther("0.001");
+  console.log("Deploying contract with the account:", wallet.address);
 
-  const lock = await hre.ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  const SimpleDeposit = await hre.ethers.getContractFactory("SimpleDeposit");
+  // Pass the wallet instance instead of its address
+  const simpleDeposit = await SimpleDeposit.deploy(wallet);
 
-  await lock.waitForDeployment();
+  await simpleDeposit.waitForDeployment();
 
-  console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
-  );
+  console.log("SimpleDeposit contract deployed to:", simpleDeposit.target);
+
+  // Specify a minimum amount of USDC you'd accept for your ETH
+  const amountOutMin = hre.ethers.parseUnits("1000", 6); // Example: 10 USDC
+  // Use a deadline of 20 minutes from now
+  const deadline = Math.floor(Date.now() / 1000) + (20 * 60); // 20 minutes from the current Unix time
+
+  // Send 1 ETH to the contract for USDC
+  const ethToSend = hre.ethers.parseEther("10");
+
+  // Connect the contract to the wallet that will execute the transaction
+  const connectedContract = simpleDeposit.connect(wallet);
+
+  // Call depositETHForUSDC with the specified parameters and attached ETH value
+  const tx = await connectedContract.depositETHForUSDC(amountOutMin, deadline, { value: ethToSend });
+  await tx.wait();
+  const IERC20ABI = [
+    "function approve(address spender, uint256 amount) external returns (bool)",
+    "function balanceOf(address account) external view returns (uint256)", // Add balanceOf function
+    // Add other ERC20 functions here as needed
+  ];
+
+  // The address of the USDC token on your network (ensure it's correct for localhost or testnet)
+  const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  const usdcToken = new hre.ethers.Contract(usdcAddress, IERC20ABI, wallet);
+  console.log(simpleDeposit.target)
+  const depositAmount = await usdcToken.balanceOf(wallet.address);
+
+  // Approve the SimpleDeposit contract to spend 100 USDC on your behalf
+  await usdcToken.approve(simpleDeposit.target, depositAmount);
+  
+  // Now you can deposit USDC into the SimpleDeposit contract
+  const depositTx = await connectedContract.topUpUSDC(1,{value:"100000000000000000000"});
+  await depositTx.wait();
+  // After the swap, check the USDC balance of the deployer in the contract
+  const userBalance = await connectedContract.getBalance(wallet.address);
+  console.log("User USDC Balance:", userBalance.toString());
+
+  console.log("Deposit function tested successfully.");
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
