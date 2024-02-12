@@ -49,11 +49,12 @@ async function main() {
   const depositTx = await connectedContract.topUpUSDC(1,{value:"100000000000000000000"});
   await depositTx.wait();
   // After the swap, check the USDC balance of the deployer in the contract
+  const depositTx2 = await connectedContract.deposit(1,{value:"100000000000000000000"});
+  await depositTx2.wait();
   const userBalance = await connectedContract.getBalance(wallet.address);
+
   console.log("User USDC Balance:", userBalance.toString());
 
-  const wit = await connectedContract.withdraw()
-  console.log(wit)
   console.log("Deposit function tested successfully.");
 }
 
