@@ -38,6 +38,8 @@ interface IPoolAddressesProvider {
 }
 contract SimpleDeposit is Ownable {
     IERC20 public usdcToken;
+    IERC20 public aUsdcToken;
+
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
     IPoolAddressesProvider public poolAddressesProvider;
@@ -48,14 +50,18 @@ contract SimpleDeposit is Ownable {
 
     constructor( address _initialOwner) Ownable(_initialOwner) {
         usdcToken = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+        aUsdcToken = IERC20(0x9bA00D6856a4eDF4665BcA2C2309936572473B7E);
+
         uniswapRouter = IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         poolAddressesProvider = IPoolAddressesProvider(0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e);
-        
         // Fetch the latest LendingPool address
         address lendingPoolAddress = poolAddressesProvider.getPool();
         lendingPool = IPool(lendingPoolAddress);
     }
-
+ function getAUsdcBalance() public view returns (uint256) {
+        return aUsdcToken.balanceOf(address(this));
+    }
+    
 function deposit(uint256 amount) public payable {
         require(amount > 0, "Amount must be greater than 0");
         
@@ -78,7 +84,7 @@ function investContractsMoney(uint256 amount) public {
      lendingPool.supply(address(usdcToken), amount, address(this), 0);
 }
 
-function withdraw() public {
+function withdraw() external  {
     
     // Check the user has a balance to withdraw
     require(balances[msg.sender] > 0, "No balance to withdraw");
@@ -93,13 +99,10 @@ function withdraw() public {
     // Note: This assumes that the contract has enough liquidity in Aave
     // and the depositedAmount doesn't include any interest earned.
     uint256 amountWithdrawn = lendingPool.withdraw(address(usdcToken), depositedAmount, address(this));
+    require(usdcToken.transfer(msg.sender, amountWithdrawn), "Transfer failed");
 
     // Check to ensure the withdrawal was successful and the correct amount was returned
-    require(amountWithdrawn == depositedAmount, "Incorrect withdrawal amount");
-
-    // Transfer the USDC from this contract back to the user
-    require(usdcToken.transfer(msg.sender, depositedAmount), "Withdrawal failed");
-
+ 
     // Optionally, emit an event for successful withdrawal
 }
 
