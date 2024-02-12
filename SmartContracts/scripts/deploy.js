@@ -1,5 +1,14 @@
 const hre = require("hardhat");
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function delayedGreeting() {
+  await sleep(20000);
+  console.log("hello");
+}
+
 async function main() {
   const provider = new hre.ethers.JsonRpcProvider();
   // Use the private key to create a wallet signer
@@ -22,7 +31,7 @@ async function main() {
   const deadline = Math.floor(Date.now() / 1000) + (20 * 60); // 20 minutes from the current Unix time
 
   // Send 1 ETH to the contract for USDC
-  const ethToSend = hre.ethers.parseEther("10");
+  const ethToSend = hre.ethers.parseEther("1");
 
   // Connect the contract to the wallet that will execute the transaction
   const connectedContract = simpleDeposit.connect(wallet);
@@ -44,17 +53,24 @@ async function main() {
 
   // Approve the SimpleDeposit contract to spend 100 USDC on your behalf
   await usdcToken.approve(simpleDeposit.target, depositAmount);
-  
+  const userBalance1 = await connectedContract.getBalance(wallet.address);
+  console.log("User USDC Balance:",depositAmount.toString());
+
   // Now you can deposit USDC into the SimpleDeposit contract
-  const depositTx = await connectedContract.topUpUSDC(1,{value:"100000000000000000000"});
+  const depositTx = await connectedContract.topUpUSDC(100,{value:ethToSend});
   await depositTx.wait();
   // After the swap, check the USDC balance of the deployer in the contract
-  const depositTx2 = await connectedContract.deposit(1,{value:"100000000000000000000"});
-  await depositTx2.wait();
+
   const userBalance = await connectedContract.getBalance(wallet.address);
+  const contractBalance = await connectedContract.checkContractBalance()
+  console.log("User USDC Balance in contract:", userBalance.toString());
+  console.log("Contract USDC Balance:", contractBalance.toString());
 
-  console.log("User USDC Balance:", userBalance.toString());
+  const a =await connectedContract.investContractsMoney(1000000)
+  await delayedGreeting()
 
+  const contractBalance2 = await connectedContract.checkContractBalance()
+  console.log("Contract USDC Balance new:", contractBalance2.toString());
   console.log("Deposit function tested successfully.");
 }
 

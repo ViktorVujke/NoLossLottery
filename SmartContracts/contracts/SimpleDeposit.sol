@@ -12,43 +12,35 @@ interface IUniswapV2Router {
     ) external payable returns (uint[] memory amounts);
 
     function WETH() external pure returns (address);
-}
-interface UniswapV2Router02 {
-    function swapETHForExactTokens(
+
+    function getAmountsIn(
+        uint256 amountOut,
+        address[] memory path
+    ) external view returns (uint256[] memory amounts);
+
+     function swapETHForExactTokens(
         uint256 amountOut,
         address[] calldata path,
         address to,
         uint256 deadline
     ) external payable returns (uint256[] memory amounts);
-    function getAmountsIn(
-        uint256 amountOut,
-        address[] memory path
-    ) external view returns (uint256[] memory amounts);
-}
-interface ILendingPool {
-    function deposit(
-        address asset, 
-        uint256 amount, 
-        address onBehalfOf, 
-        uint16 referralCode
-    ) external;
-// Updated to match Aave V2 LendingPool `withdraw` function signature
-    function withdraw(
-        address asset,
-        uint256 amount,
-        address to
-    ) external returns (uint256);
 }
 
-interface ILendingPoolAddressesProvider {
-    function getLendingPool() external view returns (address);
+
+interface IPool {
+    function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
+    function withdraw(address asset, uint256 amount, address to) external returns (uint256);
 }
 
+interface IPoolAddressesProvider {
+
+    function getPool() external view returns (address);
+}
 contract SimpleDeposit is Ownable {
     IERC20 public usdcToken;
     IUniswapV2Router public uniswapRouter;
-    ILendingPool public lendingPool;
-    ILendingPoolAddressesProvider public addressesProvider;
+    IPool public lendingPool;
+    IPoolAddressesProvider public poolAddressesProvider;
 
     mapping(address => uint256) public balances;
 
@@ -57,11 +49,11 @@ contract SimpleDeposit is Ownable {
     constructor( address _initialOwner) Ownable(_initialOwner) {
         usdcToken = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
         uniswapRouter = IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-        addressesProvider = ILendingPoolAddressesProvider(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
+        poolAddressesProvider = IPoolAddressesProvider(0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e);
         
         // Fetch the latest LendingPool address
-        address lendingPoolAddress = addressesProvider.getLendingPool();
-        lendingPool = ILendingPool(lendingPoolAddress);
+        address lendingPoolAddress = poolAddressesProvider.getPool();
+        lendingPool = IPool(lendingPoolAddress);
     }
 
 function deposit(uint256 amount) public payable {
@@ -72,9 +64,7 @@ function deposit(uint256 amount) public payable {
 
         // Approve the LendingPool contract to spend the USDC
         usdcToken.approve(address(lendingPool), amount);
-
-        // Deposit USDC into Aave on behalf of this contract
-        lendingPool.deposit(address(usdcToken), amount, address(this), 0);
+        lendingPool.supply(address(usdcToken), amount, address(this), 0);
 
         // Record the user's deposit
         balances[msg.sender] += amount;
@@ -83,6 +73,10 @@ function deposit(uint256 amount) public payable {
         emit Deposited(msg.sender, amount, "USDC");
     }
 
+function investContractsMoney(uint256 amount) public {
+     usdcToken.approve(address(lendingPool), amount);
+     lendingPool.supply(address(usdcToken), amount, address(this), 0);
+}
 
 function withdraw() public {
     
@@ -164,16 +158,16 @@ function topUpUSDC(uint256 requestedAmount) public payable {
             return;
         }
         uint256 amount = satoshis - usdc;
-        UniswapV2Router02 uniswapV2Router02 = UniswapV2Router02(
+        IUniswapV2Router uniswapRouter2 = IUniswapV2Router(
             0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
         );
         address[] memory path = new address[](2);
         path[0] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
         path[1] = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        uint256[] memory amountsIn = uniswapV2Router02.getAmountsIn(amount, path);
+        uint256[] memory amountsIn = uniswapRouter2.getAmountsIn(amount, path);
         uint256 ethRequired = amountsIn[0];
         require(msg.value >= ethRequired, "Not enough ETH sent");
-        uniswapV2Router02.swapETHForExactTokens{value: ethRequired}(
+        uniswapRouter2.swapETHForExactTokens{value: ethRequired}(
             amount,
             path,
             msg.sender,
