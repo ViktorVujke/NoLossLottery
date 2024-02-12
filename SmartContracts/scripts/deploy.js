@@ -52,6 +52,8 @@ async function main() {
   const userBalance = await connectedContract.getBalance(wallet.address);
   console.log("User USDC Balance:", userBalance.toString());
 
+  const wit = await connectedContract.withdraw()
+  console.log(wit)
   console.log("Deposit function tested successfully.");
 }
 

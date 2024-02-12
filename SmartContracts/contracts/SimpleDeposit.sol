@@ -25,9 +25,24 @@ interface UniswapV2Router02 {
         address[] memory path
     ) external view returns (uint256[] memory amounts);
 }
+interface ILendingPool {
+    function deposit(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external;
+     function withdraw(
+        address asset,
+        uint256 amount,
+        address to
+    ) external returns (uint256);
+}
 contract SimpleDeposit is Ownable {
     IERC20 public usdcToken;
     IUniswapV2Router public uniswapRouter;
+    ILendingPool public lendingPool;
+
     mapping(address => uint256) public balances;
 
     event Deposited(address indexed user, uint256 amount, string currency);
@@ -35,15 +50,42 @@ contract SimpleDeposit is Ownable {
     constructor( address _initialOwner) Ownable(_initialOwner) {
         usdcToken = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
         uniswapRouter = IUniswapV2Router(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+        lendingPool = ILendingPool(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
+
     }
 
     function deposit(uint256 amount) public {
         require(amount > 0, "Amount must be greater than 0");
         require(usdcToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
 
+        // Approve the LendingPool contract to spend your USDC
+        usdcToken.approve(address(lendingPool), amount);
+
+        // Deposit USDC into Aave on behalf of the user
+        lendingPool.deposit(address(usdcToken), amount, msg.sender, 0);
+
         balances[msg.sender] += amount;
         emit Deposited(msg.sender, amount, "USDC");
     }
+
+ function withdraw() public {
+    require(balances[msg.sender] > 0, "No balance to withdraw");
+
+    uint256 depositedAmount = balances[msg.sender];
+    balances[msg.sender] = 0; // Reset their balance
+
+    // Assuming the contract itself doesn't accrue interest directly (e.g., holding aTokens),
+    // and you're simply withdrawing the initial deposit amount.
+    // Withdraw USDC from Aave back to this contract.
+    // The `withdraw` function returns the actual amount withdrawn, which could be useful for logging or validation.
+    uint256 amountWithdrawn = lendingPool.withdraw(address(usdcToken), depositedAmount, address(this));
+
+    // Transfer USDC from this contract back to the user.
+    // It's safer to use the actual `amountWithdrawn` returned by the Aave withdraw function.
+    require(usdcToken.transfer(msg.sender, amountWithdrawn), "Withdrawal failed");
+}
+
+
 
     // Optional: Function to allow users to check their balance
     function getBalance(address user) public view returns (uint256) {
