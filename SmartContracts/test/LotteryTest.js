@@ -56,11 +56,12 @@ describe("Lottery Contract", async () => {
         expect(result5.ok).to.equal(false);
 
         setInterval(async () => {
+            await hre.network.provider.send("evm_mine"); 
             const result6 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, user1);
             console.log(result6);
         }, 10000);
 
-        await new Promise(resolve => setTimeout(resolve, 1000 * 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000 * 1000));
 
     })
 

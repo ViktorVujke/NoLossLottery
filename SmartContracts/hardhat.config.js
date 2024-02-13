@@ -2,7 +2,7 @@ require("@nomicfoundation/hardhat-toolbox");
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   mocha: {
-    timeout: 1000000 // Set global timeout to 50 seconds
+    timeout: 2000000 // Set global timeout to 50 seconds
   },
   networks: {
     localhost: {
