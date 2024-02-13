@@ -1,60 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./DataTypes.sol";
 
-interface IUniswapV2Router {
-    function swapExactETHForTokens(
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external payable returns (uint[] memory amounts);
-
-    function WETH() external pure returns (address);
-
-    function getAmountsIn(
-        uint256 amountOut,
-        address[] memory path
-    ) external view returns (uint256[] memory amounts);
-
-    function swapETHForExactTokens(
-        uint256 amountOut,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable returns (uint256[] memory amounts);
-}
-
-interface IPool {
-    function supply(
-        address asset,
-        uint256 amount,
-        address onBehalfOf,
-        uint16 referralCode
-    ) external;
-
-    function withdraw(
-        address asset,
-        uint256 amount,
-        address to
-    ) external returns (uint256);
-
-    function getReserveData(
-        address asset
-    ) external view returns (DataTypes.ReserveData memory);
-}
-
-interface IPoolAddressesProvider {
-    function getPool() external view returns (address);
-}
+//interfaces
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import '../interfaces/IPool.sol';
+import '../interfaces/IPoolAddressesProvider.sol';
+import '../interfaces/IUniswapV2Router.sol';
 
 contract NoLossLottery {
     IERC20 public usdcToken;
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
     IPoolAddressesProvider public poolAddressesProvider;
+    uint256 public constant MIN_DEPOSIT = 10000; // Minimum deposit amount in USDC
+    uint256 public endTime; // End time for the lottery
+    
+    mapping(address => User) public users; // Mapping of user addresses to their data
+    address public head; // Head of the linked list
+    uint256 public totalEntries; // Total number of entries in the lottery
+    uint256 public startTime; // Start time for the lottery
 
     constructor() {
         usdcToken = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
@@ -67,33 +33,37 @@ contract NoLossLottery {
 
         address lendingPoolAddress = poolAddressesProvider.getPool();
         lendingPool = IPool(lendingPoolAddress);
+        startTime = block.timestamp; // Set the start time to contract deployment time
+        endTime = startTime + 10000;
+    }
+    struct User {
+        uint256 entries; // User's TWAB as number of entries
+        address next; // Pointer to the next user in the list
     }
 
-    struct Position {
-        uint256 timestamp;
-        uint256 amount; // USDC
+
+
+
+   function deposit(uint256 amount) external {
+    require(amount > 0, "Amount must be greater than 0");
+    require(block.timestamp < endTime, "Lottery has ended");
+
+    usdcToken.transferFrom(msg.sender, address(this), amount);
+    usdcToken.approve(address(lendingPool), amount);
+    lendingPool.supply(address(usdcToken), amount, address(this), 0);
+
+    uint256 additionalEntries = calculateEntries(amount, msg.sender);
+    if (users[msg.sender].entries == 0) { // If it's a new user
+        users[msg.sender].next = head; // Add new user to the front of the list
+        head = msg.sender;
     }
+    users[msg.sender].entries += additionalEntries;
+    totalEntries += additionalEntries;
+}
 
-    mapping(address => Position) private balances;
-
-    function deposit(uint256 amount) external {
-        require(amount > 0, "Amount must be greater than 0");
-
-        require(
-            balances[msg.sender].amount == 0,
-            "You already have a position"
-        );
-
-        require(
-            usdcToken.transferFrom(msg.sender, address(this), amount),
-            "Transfer failed"
-        );
-
-        usdcToken.approve(address(lendingPool), amount);
-        lendingPool.supply(address(usdcToken), amount, address(this), 0);
-
-        balances[msg.sender].amount = amount;
-        balances[msg.sender].timestamp = block.timestamp;
+    function calculateEntries(uint256 amount, address user) internal view returns (uint256) {
+        uint256 timeLeft = endTime > block.timestamp ? endTime - block.timestamp : 0;
+        return (amount / MIN_DEPOSIT) * timeLeft / (startTime - endTime);
     }
 
     function getSuppliedAmount() external view returns (uint256) {
@@ -103,4 +73,6 @@ contract NoLossLottery {
         IERC20 aToken = IERC20(reserveData.aTokenAddress);
         return aToken.balanceOf(address(this));
     }
+
+    //internal functions
 }
