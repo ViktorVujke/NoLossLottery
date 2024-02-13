@@ -4,8 +4,8 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function delayedGreeting(time) {
-  await sleep(time);
+async function delayedGreeting() {
+  await sleep(20000);
   console.log("hello");
 }
 
@@ -65,18 +65,12 @@ async function main() {
   const contractBalance = await connectedContract.checkContractBalance()
   console.log("User USDC Balance in contract:", userBalance.toString());
   console.log("Contract USDC Balance:", contractBalance.toString());
-  await delayedGreeting(1000)
-  const a =await connectedContract.investContractsMoney(1000000000)
-  await a.wait();
 
+  const a =await connectedContract.investContractsMoney(1000000)
+  await delayedGreeting()
 
   const contractBalance2 = await connectedContract.checkContractBalance()
   console.log("Contract USDC Balance new:", contractBalance2.toString());
-  const bb  = await connectedContract.getAUsdcBalance()
-  
-  console.log("Amount in ausdc",bb);
-
-
   console.log("Deposit function tested successfully.");
 }
 

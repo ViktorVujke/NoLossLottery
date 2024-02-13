@@ -1,6 +1,6 @@
 pragma solidity ^0.8.20;
 
-import '../contracts/DataTypes.sol';
+import "../contracts/DataTypes.sol";
 
 interface IPool {
     function supply(

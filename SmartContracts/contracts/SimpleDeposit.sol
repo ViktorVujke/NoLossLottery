@@ -48,8 +48,6 @@ interface IPoolAddressesProvider {
 
 contract SimpleDeposit is Ownable {
     IERC20 public usdcToken;
-    IERC20 public aUsdcToken;
-
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
     IPoolAddressesProvider public poolAddressesProvider;
@@ -71,12 +69,8 @@ contract SimpleDeposit is Ownable {
         address lendingPoolAddress = poolAddressesProvider.getPool();
         lendingPool = IPool(lendingPoolAddress);
     }
-    
- function getAUsdcBalance() public view returns (uint256) {
-        return aUsdcToken.balanceOf(address(this));
-    }
-    
-function deposit(uint256 amount) public payable {
+
+    function deposit(uint256 amount) public payable {
         require(amount > 0, "Amount must be greater than 0");
 
         // Transfer USDC from the user to this contract
