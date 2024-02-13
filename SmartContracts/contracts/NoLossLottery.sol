@@ -10,7 +10,7 @@ import '../interfaces/IPoolAddressesProvider.sol';
 import '../interfaces/IUniswapV2Router.sol';
 
 contract NoLossLottery {
-    IERC20 public usdcToken;
+    IERC20 public tokenContract;
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
     IPoolAddressesProvider public poolAddressesProvider;
@@ -22,8 +22,9 @@ contract NoLossLottery {
     uint256 public totalEntries; // Total number of entries in the lottery
     uint256 public startTime; // Start time for the lottery
 
-    constructor() {
-        usdcToken = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    constructor(address tokenContractAddress) {
+        // CONTRACTI OVDE
+        tokenContract = IERC20(tokenContractAddress);
         uniswapRouter = IUniswapV2Router(
             0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
         );
@@ -38,6 +39,7 @@ contract NoLossLottery {
     }
     struct User {
         uint256 entries; // User's TWAB as number of entries
+        uint256 depositAmount;
         address next; // Pointer to the next user in the list
     }
 
@@ -48,9 +50,9 @@ contract NoLossLottery {
     require(amount > 0, "Amount must be greater than 0");
     require(block.timestamp < endTime, "Lottery has ended");
 
-    usdcToken.transferFrom(msg.sender, address(this), amount);
-    usdcToken.approve(address(lendingPool), amount);
-    lendingPool.supply(address(usdcToken), amount, address(this), 0);
+    tokenContract.transferFrom(msg.sender, address(this), amount);
+    tokenContract.approve(address(lendingPool), amount);
+    lendingPool.supply(address(tokenContract), amount, address(this), 0);
 
     uint256 additionalEntries = calculateEntries(amount, msg.sender);
     if (users[msg.sender].entries == 0) { // If it's a new user
@@ -58,6 +60,7 @@ contract NoLossLottery {
         head = msg.sender;
     }
     users[msg.sender].entries += additionalEntries;
+    users[msg.sender].depositAmount += amount;
     totalEntries += additionalEntries;
 }
 
@@ -68,11 +71,26 @@ contract NoLossLottery {
 
     function getSuppliedAmount() external view returns (uint256) {
         DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(
-                0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-            );
+            address(tokenContract)
+        );
         IERC20 aToken = IERC20(reserveData.aTokenAddress);
         return aToken.balanceOf(address(this));
     }
 
-    //internal functions
+    function withdraw() external {
+    require(users[msg.sender].depositAmount > 0, "You have not supplied any tokens");
+
+    uint256 amountToWithdraw = users[msg.sender].depositAmount;
+
+    // Reset the user's lottery entries and deposited amount
+    totalEntries -= users[msg.sender].entries;
+    users[msg.sender].entries = 0;
+    users[msg.sender].depositAmount = 0;
+
+    // Withdraw the tokens back to the user
+    require(lendingPool.withdraw(address(tokenContract), amountToWithdraw, msg.sender), "Withdrawal failed");
+
+    // Note: The removal from the linked list is not addressed in this function.
+    // Consider adding logic to handle the linked list if necessary.
+    }
 }
