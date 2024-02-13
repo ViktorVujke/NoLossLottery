@@ -34,35 +34,73 @@ describe("Uniswap USDC", async () => {
 })
 
 describe("Lottery Contract", async () => {
+    console.log("RUNUJEM DESCRIBEEE");
+    const globalS = {};
+
+    it("Initialize", async () => {
+        globalS.user = (await hre.ethers.getSigners())[0];
+        await USDC.buy(globalS.user, 20000000n);
+        globalS.initial = await USDC.getBalance(globalS.user);
+        await USDC.approve(globalS.user, 20000000n, (await Lottery.getContract()).target)
+    })
+
+    it("Exceed allowance", async () => {
+        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [50000000n], 0, globalS.user);
+        expect(result.ok).to.equal(false);
+    })
+
+    it("Exceed balance", async () => {
+        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [40000000n], 0, globalS.user);
+        expect(result.ok).to.equal(false);
+    })
+
+    it("Working deposit", async () => {
+        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
+        expect((result.ok)).to.equal(true);
+    })
+
+    it("Already have position", async () => {
+        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
+        expect((result.ok)).to.equal(false);
+    })
+
+    it("Exceed balance", async () => {
+    })
+    it("Exceed balance", async () => {
+    })
+
     it("Deposit USDC", async () => {
-        const user1 = (await hre.ethers.getSigners())[0];
-        await USDC.buy(user1, 2000000000n); // 100 dolara
-        await USDC.approve(user1, 4000000000n, (await Lottery.getContract()).target)
-
-        // Exceeds allowance
-        const result1 = await Contracts.execute(await Lottery.getContract(), "deposit", [5000000000n], 0, user1);
-        expect(result1.ok).to.equal(false);
-
-        // Exceeds balance
-        const result2 = await Contracts.execute(await Lottery.getContract(), "deposit", [4000000000n], 0, user1);
-        expect(result2.ok).to.equal(false);
-
-        // Working
-        const result4 = await Contracts.execute(await Lottery.getContract(), "deposit", [1000000000n], 0, user1);
-        expect(result4.ok).to.equal(true);
 
         // Already have a position
-        const result5 = await Contracts.execute(await Lottery.getContract(), "deposit", [1000000000n], 0, user1);
-        expect(result5.ok).to.equal(false);
+        expect((await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user)).ok).to.equal(false);
 
-        setInterval(async () => {
-            await hre.network.provider.send("evm_mine"); 
-            const result6 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, user1);
-            console.log(result6);
-        }, 10000);
+        await hre.network.provider.send("evm_increaseTime", [10000]);
+        await hre.network.provider.send("evm_mine");
+        const result1 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user);
+        expect(result1.result).to.greaterThan(10000000n);
 
-        await new Promise(resolve => setTimeout(resolve, 2000 * 1000));
+        await hre.network.provider.send("evm_increaseTime", [10000]);
+        await hre.network.provider.send("evm_mine");
+        const result2 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user);
+        expect(result2.result).to.greaterThan(result1.result);
 
+        const withdrawAmountObj = await Contracts.execute(await Lottery.getContract(), "withdraw", [], 0, globalS.user);
+        expect(withdrawAmountObj.ok).to.equal(true);
+
+        const result6 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user);
+        expect(result6.result).to.greaterThan(0);
+
+        const result7 = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
+        expect(result7.ok).to.equal(true);
+
+        await Contracts.execute(await Lottery.getContract(), "withdraw", [], 0, globalS.user);
+
+        const result8 = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
+        expect(result8.ok).to.equal(false);
+        expect(await USDC.getBalance(globalS.user)).to.equal(globalS.initial);
+
+
+        console.log(await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user))
     })
 
 })

@@ -51,13 +51,14 @@ interface IPoolAddressesProvider {
 }
 
 contract NoLossLottery {
-    IERC20 public usdcToken;
+    IERC20 public tokenContract;
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
     IPoolAddressesProvider public poolAddressesProvider;
 
-    constructor() {
-        usdcToken = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+    constructor(address tokenContractAddress) {
+        // CONTRACTI OVDE
+        tokenContract = IERC20(tokenContractAddress);
         uniswapRouter = IUniswapV2Router(
             0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
         );
@@ -85,12 +86,12 @@ contract NoLossLottery {
         );
 
         require(
-            usdcToken.transferFrom(msg.sender, address(this), amount),
+            tokenContract.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"
         );
 
-        usdcToken.approve(address(lendingPool), amount);
-        lendingPool.supply(address(usdcToken), amount, address(this), 0);
+        tokenContract.approve(address(lendingPool), amount);
+        lendingPool.supply(address(tokenContract), amount, address(this), 0);
 
         balances[msg.sender].amount = amount;
         balances[msg.sender].timestamp = block.timestamp;
@@ -98,9 +99,16 @@ contract NoLossLottery {
 
     function getSuppliedAmount() external view returns (uint256) {
         DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(
-                0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-            );
+            address(tokenContract)
+        );
         IERC20 aToken = IERC20(reserveData.aTokenAddress);
         return aToken.balanceOf(address(this));
+    }
+
+    function withdraw() external {
+        require(balances[msg.sender].amount > 0, "You have not supplied any tokens");
+        lendingPool.withdraw(address(tokenContract), balances[msg.sender].amount, msg.sender);
+        balances[msg.sender].amount = 0;
+        balances[msg.sender].timestamp = 0;
     }
 }
