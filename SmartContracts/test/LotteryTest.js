@@ -120,6 +120,7 @@ describe("Lottery Contract", async () => {
 
     it("Final log", async () => {
         await hre.network.provider.send("evm_increaseTime", [5000]);
+        await Contracts.execute(globalS.lottery, "win", [Math.floor(Math.random() * 1000000001)], 0, globalS.user)
         const winner = (await Contracts.execute(globalS.lottery, "getWinner", [], 0, globalS.user)).result;
         if (winner == globalS.user.address) {
             console.log("PRVI POBEDIO")
