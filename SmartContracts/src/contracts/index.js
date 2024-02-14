@@ -17,8 +17,8 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
 
 
         const receipt = await response.wait();
+        const events = [];
         for (const log of receipt.logs) {
-            const events = [];
             try {
                 const parsedLog = contract.interface.parseLog(log);
                 if (!parsedLog?.name) {
@@ -30,9 +30,8 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
                 //console.log("Error parsing log")
                 //console.log(e);
             }
-            return { ok: true, view: false, events }
         }
-        return { ok: true, view: false, events: [] }
+        return { ok: true, view: false, events }
     }
     catch (e) {
         //console.log(e);

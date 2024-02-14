@@ -12,8 +12,11 @@ contract NoLossLottery {
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
     IPoolAddressesProvider public poolAddressesProvider;
+    uint256 start;
+    uint256 end;
 
-    constructor(address tokenContractAddress) {
+    constructor(address tokenContractAddress, uint256 sds) {
+        block.timestamp;
         // CONTRACTI OVDE
         tokenContract = IERC20(tokenContractAddress);
         uniswapRouter = IUniswapV2Router(
@@ -25,22 +28,27 @@ contract NoLossLottery {
 
         address lendingPoolAddress = poolAddressesProvider.getPool();
         lendingPool = IPool(lendingPoolAddress);
+        start = block.timestamp;
+        end = start + sds;
     }
 
-    struct Position {
-        uint256 timestamp;
-        uint256 amount; // USDC
+    struct Node {
+        uint256 amount;
+        uint256 entries;
+        address next;
     }
 
-    mapping(address => Position) private balances;
+    mapping(address => Node) private balances;
+    address head = address(0);
+    address tail = address(0);
+    address winner = address(0);
+    uint256 supplied = 0;
+    uint256 totalEntries = 0;
 
     function deposit(uint256 amount) external {
-        require(amount > 0, "Amount must be greater than 0");
+        require(block.timestamp < end, "Lottery over");
 
-        require(
-            balances[msg.sender].amount == 0,
-            "You already have a position"
-        );
+        require(amount > 0, "Amount must be greater than 0");
 
         require(
             tokenContract.transferFrom(msg.sender, address(this), amount),
@@ -50,22 +58,81 @@ contract NoLossLottery {
         tokenContract.approve(address(lendingPool), amount);
         lendingPool.supply(address(tokenContract), amount, address(this), 0);
 
-        balances[msg.sender].amount = amount;
-        balances[msg.sender].timestamp = block.timestamp;
+        supplied += amount;
+        uint256 newEntries = (amount * (end - block.timestamp)) / (end - start);
+        totalEntries += newEntries; // Za usdc ne bi trebalo da bude overflowa za milijardu i godinu dana
+
+        if (tail == address(0)) {
+            // Prvi cvor
+            balances[msg.sender].amount = amount;
+            balances[msg.sender].entries = newEntries;
+            balances[msg.sender].next = address(0);
+            head = tail = msg.sender;
+        } else if (
+            balances[msg.sender].next != address(0) || msg.sender == tail
+        ) // Postoji
+        {
+            balances[msg.sender].amount += amount;
+            balances[msg.sender].entries += newEntries;
+        } else {
+            // Ne postoji, nije prazan
+            balances[msg.sender].amount = amount;
+            balances[msg.sender].entries = newEntries;
+            balances[msg.sender].next = address(0);
+            balances[tail].next = msg.sender;
+            tail = msg.sender;
+        }
     }
 
-    function getSuppliedAmount() external view returns (uint256) {
+    function getSuppliedAmount() public view returns (uint256) {
+        return supplied;
+    }
+
+    function getTotalEntries() public view returns (uint256) {
+        return totalEntries;
+    }
+
+    function getYieldAmount() public view returns (uint256) {
         DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(
             address(tokenContract)
         );
         IERC20 aToken = IERC20(reserveData.aTokenAddress);
-        return aToken.balanceOf(address(this));
+        return aToken.balanceOf(address(this)) - supplied;
     }
 
-    function withdraw() external {
-        require(balances[msg.sender].amount > 0, "You have not supplied any tokens");
-        lendingPool.withdraw(address(tokenContract), balances[msg.sender].amount, msg.sender);
-        balances[msg.sender].amount = 0;
-        balances[msg.sender].timestamp = 0;
+    function withdraw(uint256 amount) external {
+        require(
+            balances[msg.sender].amount >= amount,
+            "You do not have enough tokens in lottery"
+        );
+
+        supplied -= amount;
+        lendingPool.withdraw(address(tokenContract), amount, msg.sender);
+        // Pogledati matematiku
+        uint256 removedEntries = (balances[msg.sender].entries * amount) /
+            balances[msg.sender].amount;
+        balances[msg.sender].entries -= removedEntries;
+        totalEntries -= removedEntries;
+        balances[msg.sender].amount -= amount;
+    }
+
+    function win(uint256 randomNumber) external {
+        require(block.timestamp >= end, "Lottery still in progress");
+        uint256 num = randomNumber % totalEntries;
+        address addr = head;
+        while (addr != address(0)) {
+            uint256 ent = balances[addr].entries;
+            if (num < ent) {
+                winner = addr;
+                balances[addr].amount += getYieldAmount();
+                return;
+            }
+            num -= ent;
+            addr = balances[addr].next;
+        }
+    }
+
+    function getWinner() external view returns (address) {
+        return winner;
     }
 }

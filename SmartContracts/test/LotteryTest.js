@@ -34,73 +34,99 @@ describe("Uniswap USDC", async () => {
 })
 
 describe("Lottery Contract", async () => {
-    console.log("RUNUJEM DESCRIBEEE");
     const globalS = {};
 
     it("Initialize", async () => {
         globalS.user = (await hre.ethers.getSigners())[0];
         await USDC.buy(globalS.user, 20000000n);
         globalS.initial = await USDC.getBalance(globalS.user);
-        await USDC.approve(globalS.user, 20000000n, (await Lottery.getContract()).target)
+        globalS.lottery = await Lottery.deployUSDC(30000)
+        await USDC.approve(globalS.user, 20000000n, globalS.lottery.target)
     })
 
     it("Exceed allowance", async () => {
-        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [50000000n], 0, globalS.user);
+        const result = await Contracts.execute(globalS.lottery, "deposit", [50000000n], 0, globalS.user);
         expect(result.ok).to.equal(false);
     })
 
     it("Exceed balance", async () => {
-        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [40000000n], 0, globalS.user);
+        const result = await Contracts.execute(globalS.lottery, "deposit", [40000000n], 0, globalS.user);
         expect(result.ok).to.equal(false);
     })
 
     it("Working deposit", async () => {
-        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
+        const result = await Contracts.execute(globalS.lottery, "deposit", [10000000n], 0, globalS.user);
         expect((result.ok)).to.equal(true);
     })
 
-    it("Already have position", async () => {
-        const result = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
+    /*it("Already have position", async () => {
+        const result = await Contracts.execute(globalS.lottery, "deposit", [10000000n], 0, globalS.user);
         expect((result.ok)).to.equal(false);
-    })
+    })*/
 
-    it("Exceed balance", async () => {
-    })
-    it("Exceed balance", async () => {
-    })
-
-    it("Deposit USDC", async () => {
-
-        // Already have a position
-        expect((await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user)).ok).to.equal(false);
-
+    it("Increase over time", async () => {
         await hre.network.provider.send("evm_increaseTime", [10000]);
         await hre.network.provider.send("evm_mine");
-        const result1 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user);
-        expect(result1.result).to.greaterThan(10000000n);
-
+        const result = await Contracts.execute(globalS.lottery, "getYieldAmount", [], 0, globalS.user);
+        expect(result.result).to.greaterThan(0n);
+        globalS.amount = result.result;
+    })
+    it("Increase over time 2", async () => {
         await hre.network.provider.send("evm_increaseTime", [10000]);
         await hre.network.provider.send("evm_mine");
-        const result2 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user);
-        expect(result2.result).to.greaterThan(result1.result);
-
-        const withdrawAmountObj = await Contracts.execute(await Lottery.getContract(), "withdraw", [], 0, globalS.user);
-        expect(withdrawAmountObj.ok).to.equal(true);
-
-        const result6 = await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user);
-        expect(result6.result).to.greaterThan(0);
-
-        const result7 = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
-        expect(result7.ok).to.equal(true);
-
-        await Contracts.execute(await Lottery.getContract(), "withdraw", [], 0, globalS.user);
-
-        const result8 = await Contracts.execute(await Lottery.getContract(), "deposit", [10000000n], 0, globalS.user);
-        expect(result8.ok).to.equal(false);
+        const result = await Contracts.execute(globalS.lottery, "getYieldAmount", [], 0, globalS.user);
+        expect(result.result).to.greaterThan(globalS.amount);
+    })
+    it("Withdraw", async () => {
+        const result = await Contracts.execute(globalS.lottery, "withdraw", [10000000n], 0, globalS.user);
+        expect(result.ok).to.equal(true);
+    })
+    it("GetYield after withdraw", async () => {
+        const result = await Contracts.execute(globalS.lottery, "getYieldAmount", [], 0, globalS.user);
+        expect(result.result).to.greaterThan(0);
+    })
+    it("Deposit v2", async () => {
+        const result = await Contracts.execute(globalS.lottery, "deposit", [10000000n], 0, globalS.user);
+        expect(result.ok).to.equal(true);
+    })
+    it("Unauthorized depozit", async () => {
+        await Contracts.execute(globalS.lottery, "withdraw", [10000000n], 0, globalS.user);
+        const result = await Contracts.execute(globalS.lottery, "deposit", [10000000n], 0, globalS.user);
+        expect(result.ok).to.equal(false);
         expect(await USDC.getBalance(globalS.user)).to.equal(globalS.initial);
+    })
+    it("Second depositor", async () => {
+        globalS.user2 = (await hre.ethers.getSigners())[1];
+        await USDC.buy(globalS.user2, 30000000n);
+        await USDC.approve(globalS.user2, 30000000n, globalS.lottery.target)
+        const result = await Contracts.execute(globalS.lottery, "deposit", [30000000n], 0, globalS.user2);
+        expect(result.ok).to.equal(true);
+    })
+    it("Early win", async () => {
+        const result = await Contracts.execute(globalS.lottery, "win", [], 0, globalS.user2);
+        expect(result.ok).to.equal(false);
+    })
+    it("First back", async () => {
+        await USDC.approve(globalS.user, 20000000n, globalS.lottery.target)
+        const result = await Contracts.execute(globalS.lottery, "deposit", [20000000n], 0, globalS.user);
+        expect(result.ok).to.equal(true);
+        expect((await Contracts.execute(globalS.lottery, "getSuppliedAmount", [], 0, globalS.user)).result).to.equal(50000000n);
+        await hre.network.provider.send("evm_increaseTime", [5000]);
+        await USDC.buy(globalS.user, 20000000n);
+        await USDC.approve(globalS.user, 20000000n, globalS.lottery.target)
+        await Contracts.execute(globalS.lottery, "deposit", [20000000n], 0, globalS.user);
+        expect(((await Contracts.execute(globalS.lottery, "getTotalEntries", [], 0, globalS.user))).result).to.closeTo(20000000n, 100000);
+    })
 
-
-        console.log(await Contracts.execute(await Lottery.getContract(), "getSuppliedAmount", [], 0, globalS.user))
+    it("Final log", async () => {
+        await hre.network.provider.send("evm_increaseTime", [5000]);
+        const winner = (await Contracts.execute(globalS.lottery, "getWinner", [], 0, globalS.user)).result;
+        if (winner == globalS.user.address) {
+            console.log("PRVI POBEDIO")
+        }
+        if (winner == globalS.user2.address) {
+            console.log("DRUGI POBEDIO")
+        }
     })
 
 })
