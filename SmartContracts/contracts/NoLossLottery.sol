@@ -14,6 +14,7 @@ contract NoLossLottery {
     IPoolAddressesProvider public poolAddressesProvider;
     uint256 start;
     uint256 end;
+    uint256 minDeposit;
 
     constructor(address tokenContractAddress, uint256 sds) {
         block.timestamp;
@@ -25,9 +26,10 @@ contract NoLossLottery {
         poolAddressesProvider = IPoolAddressesProvider(
             0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e
         );
-
         address lendingPoolAddress = poolAddressesProvider.getPool();
         lendingPool = IPool(lendingPoolAddress);
+
+        minDeposit = 10;
         start = block.timestamp;
         end = start + sds;
     }
@@ -47,42 +49,35 @@ contract NoLossLottery {
 
     function deposit(uint256 amount) external {
         require(block.timestamp < end, "Lottery over");
-
         require(amount > 0, "Amount must be greater than 0");
-
-        require(
-            tokenContract.transferFrom(msg.sender, address(this), amount),
-            "Transfer failed"
-        );
+        require(tokenContract.transferFrom(msg.sender, address(this), amount), "Transfer failed");
 
         tokenContract.approve(address(lendingPool), amount);
         lendingPool.supply(address(tokenContract), amount, address(this), 0);
 
         supplied += amount;
         uint256 newEntries = (amount * (end - block.timestamp)) / (end - start);
-        totalEntries += newEntries; // Za usdc ne bi trebalo da bude overflowa za milijardu i godinu dana
+        totalEntries += newEntries;
 
-        if (tail == address(0)) {
-            // Prvi cvor
-            balances[msg.sender].amount = amount;
-            balances[msg.sender].entries = newEntries;
-            balances[msg.sender].next = address(0);
-            head = tail = msg.sender;
-        } else if (
-            balances[msg.sender].next != address(0) || msg.sender == tail
-        ) // Postoji
-        {
-            balances[msg.sender].amount += amount;
-            balances[msg.sender].entries += newEntries;
-        } else {
-            // Ne postoji, nije prazan
-            balances[msg.sender].amount = amount;
-            balances[msg.sender].entries = newEntries;
-            balances[msg.sender].next = address(0);
-            balances[tail].next = msg.sender;
-            tail = msg.sender;
-        }
+        updateParticipant(msg.sender, amount, newEntries);
     }
+
+    function updateParticipant(address participant, uint256 amount, uint256 newEntries) private {
+        Node storage node = balances[participant];
+        
+        if (node.amount == 0) { // New participant
+            node.next = (head == address(0)) ? address(0) : head; // Set next to current head or 0 if first
+            head = participant; // Update head to new participant
+            if (tail == address(0)) { // If first participant, set as tail
+                tail = participant;
+            }
+        }
+        
+        // Update or set participant's node data
+        node.amount += amount;
+        node.entries += newEntries;
+    }
+
 
     function getSuppliedAmount() public view returns (uint256) {
         return supplied;
