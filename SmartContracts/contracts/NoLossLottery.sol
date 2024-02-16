@@ -16,6 +16,10 @@ contract NoLossLottery {
     uint256 end;
     uint256 minDeposit;
 
+    receive() external payable {}
+
+    fallback() external payable {}
+
     constructor(address tokenContractAddress, uint256 sds) {
         block.timestamp;
         // CONTRACTI OVDE
@@ -50,7 +54,10 @@ contract NoLossLottery {
     function deposit(uint256 amount) external {
         require(block.timestamp < end, "Lottery over");
         require(amount > 0, "Amount must be greater than 0");
-        require(tokenContract.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        require(
+            tokenContract.transferFrom(msg.sender, address(this), amount),
+            "Transfer failed"
+        );
 
         tokenContract.approve(address(lendingPool), amount);
         lendingPool.supply(address(tokenContract), amount, address(this), 0);
@@ -62,22 +69,31 @@ contract NoLossLottery {
         updateParticipant(msg.sender, amount, newEntries);
     }
 
-    function updateParticipant(address participant, uint256 amount, uint256 newEntries) private {
+    function updateParticipant(
+        address participant,
+        uint256 amount,
+        uint256 newEntries
+    ) private {
         Node storage node = balances[participant];
-        
-        if (node.amount == 0) { // New participant
+
+        if (node.amount == 0) {
+            // New participant
             node.next = (head == address(0)) ? address(0) : head; // Set next to current head or 0 if first
             head = participant; // Update head to new participant
-            if (tail == address(0)) { // If first participant, set as tail
+            if (tail == address(0)) {
+                // If first participant, set as tail
                 tail = participant;
             }
         }
-        
+
         // Update or set participant's node data
         node.amount += amount;
         node.entries += newEntries;
     }
 
+    function getBalance(address usr) external view returns (uint256) {
+        return balances[usr].amount;
+    }
 
     function getSuppliedAmount() public view returns (uint256) {
         return supplied;
@@ -111,23 +127,80 @@ contract NoLossLottery {
         balances[msg.sender].amount -= amount;
     }
 
-    function win(uint256 randomNumber) external {
+    uint256 randomNumber;
+
+    function drawWinner(uint256 rN) external {
+        uint256 totalYield = getYieldAmount();
         require(block.timestamp >= end, "Lottery still in progress");
+        randomNumber = rN + 1;
+
+        uint256 estimatedGas = 403452 * tx.gasprice;
+
+        address[] memory path = new address[](2);
+        path[0] = address(tokenContract);
+        path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+        uint[] memory amounts = uniswapRouter.getAmountsIn(estimatedGas, path);
+        uint256 amountInMax = amounts[0];
+
+        require(totalYield >= amountInMax, "Not enough tokens to cover swap");
+
+        lendingPool.withdraw(address(tokenContract), totalYield, address(this));
+        IERC20(tokenContract).approve(address(uniswapRouter), amountInMax);
+        uniswapRouter.swapTokensForExactETH(
+            estimatedGas,
+            amountInMax,
+            path,
+            address(this),
+            block.timestamp + 15 minutes
+        );
+
+        tokenContract.approve(address(lendingPool), totalYield - amountInMax);
+        lendingPool.supply(
+            address(tokenContract),
+            totalYield - amountInMax,
+            address(this),
+            0
+        );
+
+        (bool success, ) = msg.sender.call{value: estimatedGas}("");
+        require(success, "Failed to send ETH to cover gas cost");
+    }
+
+    function getWinner() external view returns (address) {
+        if (winner != address(0)) return winner;
+
+        require(randomNumber > 0, "Winner is not selected yet. ");
+
+        uint256 num = randomNumber % totalEntries;
+        address addr = head;
+        while (addr != address(0)) {
+            uint256 ent = balances[addr].entries;
+            if (num < ent) {
+                return addr;
+            }
+            num -= ent;
+            addr = balances[addr].next;
+        }
+        return address(0);
+    }
+
+    function win() external {
+        require(block.timestamp >= end, "Lottery still in progress");
+        require(winner == address(0), "Lottery already won");
         uint256 num = randomNumber % totalEntries;
         address addr = head;
         while (addr != address(0)) {
             uint256 ent = balances[addr].entries;
             if (num < ent) {
                 winner = addr;
-                balances[addr].amount += getYieldAmount();
+                uint256 yield = getYieldAmount();
+                balances[addr].amount += yield;
+                supplied += yield;
                 return;
             }
             num -= ent;
             addr = balances[addr].next;
         }
-    }
-
-    function getWinner() external view returns (address) {
-        return winner;
     }
 }

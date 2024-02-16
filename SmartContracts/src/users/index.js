@@ -29,8 +29,7 @@ async function setBalance(wallet, etherAmountStr) {
 }
 
 async function getBalance(wallet) {
-    const balance = await hre.ethers.provider.getBalance(wallet.address);
-    return hre.ethers.formatEther(balance);
+    return await hre.ethers.provider.getBalance(wallet.address);
 }
 
 

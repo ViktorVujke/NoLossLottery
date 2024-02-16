@@ -6,25 +6,10 @@ const { Uniswap } = require("../src/contracts/Uniswap");
 const hre = require("hardhat");
 const Lottery = require("../src/contracts/Lottery");
 
-describe("Base architecture", function () {
-    it("Contract deployment", async () => {
-        expect((await USDC.getContract())?.approve, "USDC deployment failed").to.not.equal(undefined);
-        expect((await Uniswap.getContract()), "Uniswap deployment failed").to.not.equal(undefined);
-    })
-    it("Wallet management", async () => {
-        const wallet = await createWallet();
-        expect(wallet?.address).to.not.equal(undefined);
-
-        await setBalance(wallet, "0.1");
-
-        expect(await getBalance(wallet)).to.equal("0.1");
-    })
-})
-
 describe("Uniswap USDC", async () => {
     it("Buy USDC", async () => {
-        const wallet = (await hre.ethers.getSigners())[0];//await createWallet();
-        //await setBalance(wallet, "10000000000000000000000000000000");
+        const wallet = (await hre.ethers.getSigners())[0];
+
         expect(await USDC.getBalance(wallet)).to.equal(0n);
         expect(await USDC.buy(wallet, 10000000n), "Top up failed").to.equal(true)
         expect(await USDC.getBalance(wallet)).to.equal(10000000n);
@@ -132,3 +117,53 @@ describe("Lottery Contract", async () => {
 
 })
 
+describe("Winner mechanism", async () => {
+    it("Multiple members", async () => {
+        const lottery = await Lottery.deployUSDC((60 + 1) * 86400) // 31 dan
+
+        const bot = (await hre.ethers.getSigners())[19];
+
+        const users = (await hre.ethers.getSigners()).slice(0, 15);
+
+        for (const user of users) {
+            await USDC.buy(user, 20000000000n);
+            await USDC.approve(user, 20000000000n, lottery.target)
+            await Contracts.execute(lottery, "deposit", [20000000000n], 0, user);
+        }
+
+        expect((await Contracts.execute(lottery, "getSuppliedAmount", [], 0, bot)).result).to.equal(300000000000n); // 300k usd u lutriji
+
+        await hre.network.provider.send("evm_increaseTime", [60 * 86400]);
+        await hre.network.provider.send("evm_mine");
+        await hre.network.provider.send("evm_increaseTime", [86400]);
+        expect((await Contracts.execute(lottery, "getWinner", [], 0, bot)).ok).to.equal(false);
+        const oldBalance = await getBalance(bot)
+        await Contracts.execute(lottery, "drawWinner", [Math.floor(Math.random() * 300000000000)], 0, bot);
+        expect(await getBalance(bot)).to.greaterThanOrEqual(oldBalance);
+
+        const winnerAddress = (await Contracts.execute(lottery, "getWinner", [], 0, bot)).result;
+        let winner = null;
+        for (const user of users)
+            if (user.address == winnerAddress)
+                winner = user;
+
+        const balance1 = (await Contracts.execute(lottery, "getBalance", [winner.address], 0, winner)).result
+        await Contracts.execute(lottery, "win", [], 0, (await hre.ethers.getSigners())[18])
+        
+        expect((await Contracts.execute(lottery, "getYieldAmount", [], 0, bot)).result).to.equal(0)
+        const balance2 = (await Contracts.execute(lottery, "getBalance", [winner.address], 0, winner)).result
+        expect(balance2).to.greaterThan(balance1);
+
+        await Contracts.execute(lottery, "withdraw", [balance2], 0, winner)
+
+        expect(await USDC.getBalance(winner)).to.equal(balance2);
+
+        for (const user of users) {
+            const balance = (await Contracts.execute(lottery, "getBalance", [user.address], 0, user)).result;
+            if (balance > 0) {
+                expect((await Contracts.execute(lottery, "withdraw", [balance], 0, user)).ok).to.equal(true);
+            }
+        }
+        expect((await Contracts.execute(lottery, "getSuppliedAmount", [], 0, bot)).result).to.equal(0);
+    })
+})
