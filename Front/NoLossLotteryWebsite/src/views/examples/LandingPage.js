@@ -37,6 +37,9 @@ import {
 import Footer from "components/Footer/Footer.js";
 import IndexNavbar from "components/Navbars/IndexNavbar";
 import bigChartData from "variables/charts.js";
+import ViewLotteriesSection from "components/Sections/ViewLotteriesSection";
+import {NextUIProvider} from "@nextui-org/react";
+import DarkLotteriesTable from "components/Sections/SectionComponents/DarkLotteriesTable";
 
 export default function LandingPage() {
   React.useEffect(() => {
@@ -47,7 +50,7 @@ export default function LandingPage() {
     };
   }, []);
   return (
-    <>
+    <NextUIProvider>
       <IndexNavbar />
       <div className="wrapper">
         <div className="page-header">
@@ -130,6 +133,11 @@ export default function LandingPage() {
             </Row>
           </div>
         </div>
+        <section className="section section-md" style={{  }}>
+        <div className="responsive-container" style={{ padding: "20px", color: "#FFFFFF" }}>
+          <ViewLotteriesSection />
+        </div>
+      </section>
         <section className="section section-lg">
           <section className="section">
             <img
@@ -569,6 +577,5 @@ export default function LandingPage() {
         </section>
         <Footer />
       </div>
-    </>
-  );
+      </NextUIProvider>  );
 }
