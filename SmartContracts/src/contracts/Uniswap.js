@@ -16,5 +16,12 @@ Uniswap.buyExactUSDCForEth = async (wallet, amountSatoshi) => {
     const trade = await Contracts.execute(await Uniswap.getContract(), "swapETHForExactTokens", [amountSatoshi, path, wallet.address, Date.now() + 10 * 60 * 1000], ethRequired, wallet);
     return trade.ok;
 }
+Uniswap.buyExactTokenForEth = async (tokenAddress, wallet, amountSatoshi) => {
+    const path = ["0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", tokenAddress]
+    const amountsIn = await Contracts.execute(await Uniswap.getContract(), "getAmountsIn", [amountSatoshi, path], 0, wallet);
+    const ethRequired = amountsIn.result[0];
+    const trade = await Contracts.execute(await Uniswap.getContract(), "swapETHForExactTokens", [amountSatoshi, path, wallet.address, Date.now() + 10 * 60 * 1000], ethRequired, wallet);
+    return trade.ok;
+}
 
 module.exports = { Uniswap }

@@ -22,7 +22,6 @@ contract NoLossLottery {
 
     constructor(address tokenContractAddress, uint256 sds) {
         block.timestamp;
-        // CONTRACTI OVDE
         tokenContract = IERC20(tokenContractAddress);
         uniswapRouter = IUniswapV2Router(
             0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -89,6 +88,10 @@ contract NoLossLottery {
         // Update or set participant's node data
         node.amount += amount;
         node.entries += newEntries;
+    }
+
+    function getTokenAddress() external view returns (address) {
+        return address(tokenContract);
     }
 
     function getBalance(address usr) external view returns (uint256) {
