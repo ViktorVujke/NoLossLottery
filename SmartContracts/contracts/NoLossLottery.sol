@@ -36,7 +36,6 @@ contract NoLossLottery is VRFConsumerBase  {
     VRFConsumerBase(0xf0d54349aDdcf704F77AE15b96510dEA15cb7952, 0x514910771AF9Ca656af840dff83E8264EcF986CA)     
     {
         block.timestamp;
-        // CONTRACTI OVDE
         tokenContract = IERC20(tokenContractAddress);
         uniswapRouter = IUniswapV2Router(
             0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D
@@ -106,6 +105,10 @@ contract NoLossLottery is VRFConsumerBase  {
         // Update or set participant's node data
         node.amount += amount;
         node.entries += newEntries;
+    }
+
+    function getTokenAddress() external view returns (address) {
+        return address(tokenContract);
     }
 
     function getBalance(address usr) external view returns (uint256) {

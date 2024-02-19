@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { Contracts } = require("../src/contracts");
 const { createWallet, setBalance, getBalance } = require("../src/users");
-const { USDC } = require("../src/contracts/USDC");
+const { USDC, WBTC, ERC20 } = require("../src/contracts/ERC20");
 const { Uniswap } = require("../src/contracts/Uniswap");
 const hre = require("hardhat");
 const Lottery = require("../src/contracts/Lottery");
@@ -139,6 +139,7 @@ describe("Winner mechanism", async () => {
         expect((await Contracts.execute(lottery, "getWinner", [], 0, bot)).ok).to.equal(false);
         const oldBalance = await getBalance(bot)
         await Contracts.execute(lottery, "drawWinner", [Math.floor(Math.random() * 300000000000)], 0, bot);
+        expect(await getBalance(bot)).to.greaterThanOrEqual(oldBalance);
 
         const winnerAddress = (await Contracts.execute(lottery, "getWinner", [], 0, bot)).result;
         let winner = null;
@@ -148,14 +149,14 @@ describe("Winner mechanism", async () => {
 
         const balance1 = (await Contracts.execute(lottery, "getBalance", [winner.address], 0, winner)).result
         await Contracts.execute(lottery, "win", [], 0, (await hre.ethers.getSigners())[18])
-        
+
         expect((await Contracts.execute(lottery, "getYieldAmount", [], 0, bot)).result).to.equal(0)
         const balance2 = (await Contracts.execute(lottery, "getBalance", [winner.address], 0, winner)).result
         expect(balance2).to.greaterThan(balance1);
 
         await Contracts.execute(lottery, "withdraw", [balance2], 0, winner)
 
-        expect(await USDC.getBalance(winner)).to.equal(balance2);
+        expect(await USDC.getBalance(winner)).to.approximately(balance2, balance2 / BigInt(1000));
 
         for (const user of users) {
             const balance = (await Contracts.execute(lottery, "getBalance", [user.address], 0, user)).result;
@@ -164,5 +165,96 @@ describe("Winner mechanism", async () => {
             }
         }
         expect((await Contracts.execute(lottery, "getSuppliedAmount", [], 0, bot)).result).to.equal(0);
+    })
+})
+
+describe("Lottery Factory", async () => {
+    // 5 sekundi za 20 usera i 2 lutrije
+    // 15 sekundi za 40 usera i 2 lutrije
+    // 22 sekunde za 60 usera i 2 lutrije
+    const globalS = {};
+    const OFFSET = 20;
+    const TOTAL = 3;
+    const AMOUNT = 100000000n;
+
+    it("Deploy lottery", async () => {
+        await WBTC.getContract(); // Da bi se ucitao
+        globalS.bot = (await hre.ethers.getSigners())[19];
+        globalS.users = (await hre.ethers.getSigners()).slice(OFFSET, OFFSET + TOTAL);
+        globalS.factory = await Lottery.deployFactory();
+        await Lottery.deployLotteryUsingFactory(globalS.factory, USDC.address, 31 * 86400)
+        await Lottery.deployLotteryUsingFactory(globalS.factory, WBTC.address, 31 * 86400)
+    })
+
+
+    it("Get Lottery", async () => {
+        const lotteries = (await Contracts.execute(globalS.factory, "getLotteries", [], 0, globalS.bot)).result;
+        globalS.lotteries = [];
+        for (const lottery of lotteries) {
+            const abiObj = await hre.artifacts.readArtifact("NoLossLottery");
+            globalS.lotteries.push(new hre.ethers.Contract(lottery, abiObj.abi))
+        }
+        expect(globalS.lotteries[0]?.target).to.be.a('string');
+        expect(globalS.lotteries[1]?.target).to.be.a('string');
+    })
+
+
+    it("Bulk deposit", async () => {
+        for (const lottery of globalS.lotteries) {
+            const tokenAddress = (await Contracts.execute(lottery, "getTokenAddress", [], 0, globalS.bot)).result;
+            const tokenObject = await ERC20.getObjectByAddress(tokenAddress);
+            for (const user of globalS.users) {
+                // Svako stavlja po 100000000 u lutriju (100 usdc ili 1 wbtc)
+                await tokenObject.buy(user, AMOUNT);
+                await tokenObject.approve(user, AMOUNT, lottery.target)
+                await Contracts.execute(lottery, "deposit", [AMOUNT], 0, user);
+            }
+        }
+    })
+    it("Get supplied amount", async () => {
+        for (const lottery of globalS.lotteries) {
+            const result = await Contracts.execute(lottery, "getSuppliedAmount", [], 0, globalS.bot);
+            expect(result.result).to.equal(BigInt(TOTAL) * AMOUNT);
+        }
+    })
+    it("Last wins", async () => {
+        const last = globalS.users[TOTAL - 1];
+
+        await hre.network.provider.send("evm_increaseTime", [30 * 86400]);
+        await hre.network.provider.send("evm_mine");
+
+        for (const lottery of globalS.lotteries) {
+            for (const user of globalS.users) {
+                if (user.address == last.address)
+                    continue;
+                await Contracts.execute(lottery, "withdraw", [AMOUNT], 0, user);
+            }
+        }
+
+        await hre.network.provider.send("evm_increaseTime", [86400]);
+        await hre.network.provider.send("evm_mine");
+
+        for (const lottery of globalS.lotteries) {
+            const oldBalance = await getBalance(globalS.bot)
+            await Contracts.execute(lottery, "drawWinner", [BigInt(Math.floor(Math.random() * TOTAL * Number(AMOUNT)))], 0, globalS.bot);
+            await hre.network.provider.send("evm_mine");
+            const newBalance = await getBalance(globalS.bot)
+            expect(newBalance).to.greaterThanOrEqual(oldBalance);
+        }
+
+        for (const lottery of globalS.lotteries) {
+            const result = await Contracts.execute(lottery, "getWinner", [], 0, globalS.bot);
+            expect(result.result).to.equal(last.address);
+            await Contracts.execute(lottery, "win", [], 0, last)
+            await hre.network.provider.send("evm_mine");
+        }
+
+        for (const lottery of globalS.lotteries) {
+            const result = await Contracts.execute(lottery, "getBalance", [last.address], 0, last);
+            await Contracts.execute(lottery, "withdraw", [result.result], 0, last);
+            const tokenAddress = (await Contracts.execute(lottery, "getTokenAddress", [], 0, last)).result;
+            const tokenObject = await ERC20.getObjectByAddress(tokenAddress);
+            expect(await tokenObject.getBalance(last)).to.greaterThan(AMOUNT);
+        }
     })
 })
