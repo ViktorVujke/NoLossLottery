@@ -6,8 +6,9 @@ import "./DataTypes.sol";
 import "../interfaces/IPool.sol";
 import "../interfaces/IPoolAddressesProvider.sol";
 import "../interfaces/IUniswapV2Router.sol";
+import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBase.sol";
 
-contract NoLossLottery {
+contract NoLossLottery is VRFConsumerBase  {
     IERC20 public tokenContract;
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
@@ -16,11 +17,24 @@ contract NoLossLottery {
     uint256 end;
     uint256 minDeposit;
 
+
+    // Chainlink VRF variables
+    bytes32 internal keyHash;
+    uint256 internal fee;
+
+    // Add a state variable to store the random result
+    uint256 public randomResult;
+    uint256 randomNumber;
+    bool public isRandomnessRequested = false; // To prevent multiple requests
+
+
     receive() external payable {}
 
     fallback() external payable {}
 
-    constructor(address tokenContractAddress, uint256 sds) {
+    constructor(address tokenContractAddress, uint256 sds) 
+    VRFConsumerBase(0xf0d54349aDdcf704F77AE15b96510dEA15cb7952, 0x514910771AF9Ca656af840dff83E8264EcF986CA)     
+    {
         block.timestamp;
         // CONTRACTI OVDE
         tokenContract = IERC20(tokenContractAddress);
@@ -36,6 +50,9 @@ contract NoLossLottery {
         minDeposit = 10;
         start = block.timestamp;
         end = start + sds;
+
+        keyHash = 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445;
+        fee = 1 * 10**18; // 1 LINK, accounting for 18 decimal places   
     }
 
     struct Node {
@@ -127,12 +144,16 @@ contract NoLossLottery {
         balances[msg.sender].amount -= amount;
     }
 
-    uint256 randomNumber;
 
     function drawWinner(uint256 rN) external {
         uint256 totalYield = getYieldAmount();
         require(block.timestamp >= end, "Lottery still in progress");
-        randomNumber = rN + 1;
+        require(!isRandomnessRequested, "Randomness already requested");
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
+
+        getRandomNumber();
+        isRandomnessRequested = true;
+
 
         uint256 estimatedGas = 403452 * tx.gasprice;
 
@@ -202,5 +223,17 @@ contract NoLossLottery {
             num -= ent;
             addr = balances[addr].next;
         }
+    }
+     // Function to request randomness
+    function getRandomNumber() public returns (bytes32 requestId) {
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
+        return requestRandomness(keyHash, fee);
+    }
+
+    // Chainlink VRF callback function
+    function fulfillRandomness(bytes32 /* requestId */, uint256 randomness) internal override {
+        randomResult = randomness;
+        isRandomnessRequested = false; // Reset the flag
+        // Now you can proceed with any logic that depends on the random number.
     }
 }
