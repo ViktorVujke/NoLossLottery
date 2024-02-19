@@ -139,6 +139,7 @@ describe("Winner mechanism", async () => {
         expect((await Contracts.execute(lottery, "getWinner", [], 0, bot)).ok).to.equal(false);
         const oldBalance = await getBalance(bot)
         await Contracts.execute(lottery, "drawWinner", [Math.floor(Math.random() * 300000000000)], 0, bot);
+        expect(await getBalance(bot)).to.greaterThanOrEqual(oldBalance);
 
         const winnerAddress = (await Contracts.execute(lottery, "getWinner", [], 0, bot)).result;
         let winner = null;
@@ -173,20 +174,31 @@ describe("Lottery Factory", async () => {
     // 22 sekunde za 60 usera i 2 lutrije
     const globalS = {};
     const OFFSET = 20;
-    const TOTAL = 60;
+    const TOTAL = 3;
     const AMOUNT = 100000000n;
 
-    it("Initialization", async () => {
+    it("Deploy lottery", async () => {
         await WBTC.getContract(); // Da bi se ucitao
         globalS.bot = (await hre.ethers.getSigners())[19];
         globalS.users = (await hre.ethers.getSigners()).slice(OFFSET, OFFSET + TOTAL);
         globalS.factory = await Lottery.deployFactory();
+        await Lottery.deployLotteryUsingFactory(globalS.factory, USDC.address, 31 * 86400)
+        await Lottery.deployLotteryUsingFactory(globalS.factory, WBTC.address, 31 * 86400)
+    })
+
+
+    it("Get Lottery", async () => {
+        const lotteries = (await Contracts.execute(globalS.factory, "getLotteries", [], 0, globalS.bot)).result;
         globalS.lotteries = [];
-        globalS.lotteries.push(await Lottery.deployLotteryUsingFactory(globalS.factory, USDC.address, 31 * 86400));
-        globalS.lotteries.push(await Lottery.deployLotteryUsingFactory(globalS.factory, WBTC.address, 31 * 86400));
+        for (const lottery of lotteries) {
+            const abiObj = await hre.artifacts.readArtifact("NoLossLottery");
+            globalS.lotteries.push(new hre.ethers.Contract(lottery, abiObj.abi))
+        }
         expect(globalS.lotteries[0]?.target).to.be.a('string');
         expect(globalS.lotteries[1]?.target).to.be.a('string');
     })
+
+
     it("Bulk deposit", async () => {
         for (const lottery of globalS.lotteries) {
             const tokenAddress = (await Contracts.execute(lottery, "getTokenAddress", [], 0, globalS.bot)).result;
