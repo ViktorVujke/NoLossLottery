@@ -152,6 +152,39 @@ contract NoLossLottery is VRFConsumerBase  {
         uint256 totalYield = getYieldAmount();
         require(block.timestamp >= end, "Lottery still in progress");
         require(!isRandomnessRequested, "Randomness already requested");
+        address[] memory linkPath = new address[](3);
+        linkPath[0] = address(tokenContract); // The token you are swapping from
+        linkPath[1] = uniswapRouter.WETH(); // The intermediary token, WETH
+        linkPath[2] = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // LINK token address
+        if (LINK.balanceOf(address(this)) < fee) {
+            // Assume `fee` is the amount of LINK needed for the randomness request
+            uint256 linkShortage = fee - LINK.balanceOf(address(this));
+
+            // Calculate the amount of the lottery's token needed to buy the LINK shortage
+            // This is an oversimplified approach; ensure you handle slippage and other trading concerns
+            uint256 tokenAmountRequired = uniswapRouter.getAmountsIn(linkShortage, linkPath)[0];
+
+            // Ensure the contract has enough tokens to perform the swap
+            require(IERC20(tokenContract).balanceOf(address(this)) >= tokenAmountRequired, "Not enough tokens for LINK purchase");
+
+            // Approve Uniswap router to spend tokens
+            IERC20(tokenContract).approve(address(uniswapRouter), tokenAmountRequired);
+
+            // Perform the swap from the lottery's token to LINK
+            // Note: Adjust the `swap` function parameters as needed
+            uniswapRouter.swapExactTokensForTokens(
+                tokenAmountRequired,
+                linkShortage,
+                linkPath,
+                address(this),
+                block.timestamp + 15 minutes
+            );
+
+            // After swap, check LINK balance again to ensure there's enough for the fee
+            require(LINK.balanceOf(address(this)) >= fee, "Swap failed to provide enough LINK");
+        }
+
+
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
 
         getRandomNumber();
