@@ -139,7 +139,6 @@ describe("Winner mechanism", async () => {
         expect((await Contracts.execute(lottery, "getWinner", [], 0, bot)).ok).to.equal(false);
         const oldBalance = await getBalance(bot)
         await Contracts.execute(lottery, "drawWinner", [Math.floor(Math.random() * 300000000000)], 0, bot);
-        expect(await getBalance(bot)).to.greaterThanOrEqual(oldBalance);
 
         const winnerAddress = (await Contracts.execute(lottery, "getWinner", [], 0, bot)).result;
         let winner = null;

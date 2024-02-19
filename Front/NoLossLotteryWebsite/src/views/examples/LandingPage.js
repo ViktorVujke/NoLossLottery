@@ -85,17 +85,16 @@ export default function LandingPage() {
             <Row className="row-grid justify-content-between align-items-center text-left">
               <Col lg="6" md="6">
                 <h1 className="text-white">
-                  We keep your coin <br />
-                  <span className="text-white">secured</span>
+                 Gamble without loss<br />
+                  <span className="text-white"></span>
                 </h1>
                 <p className="text-white mb-3">
-                  A wonderful serenity has taken possession of my entire soul,
-                  like these sweet mornings of spring which I enjoy with my
-                  whole heart. I am alone, and feel...
+                  You want to stake your crypto, but are also a degenerate gambler? NLL is the protocol for you.
+                  We offer you a way of participaiting in lotteries (with a nice upside), without the chance of getting out less than you put in.
                 </p>
                 <div className="btn-wrapper mb-3">
                   <p className="category text-success d-inline">
-                    From 9.99%/mo
+                    See our docs
                   </p>
                   <Button
                     className="btn-link"
@@ -117,22 +116,7 @@ export default function LandingPage() {
                     >
                       <i className="fab fa-twitter" />
                     </Button>
-                    <Button
-                      className="btn-icon btn-simple btn-round btn-neutral"
-                      color="default"
-                      href="#pablo"
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      <i className="fab fa-dribbble" />
-                    </Button>
-                    <Button
-                      className="btn-icon btn-simple btn-round btn-neutral"
-                      color="default"
-                      href="#pablo"
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      <i className="fab fa-facebook" />
-                    </Button>
+                   
                   </div>
                 </div>
               </Col>
