@@ -10,20 +10,32 @@ const bot = new ethers.Wallet("0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e4
 const callDrawWinner = async (lotteryAddress) => {
     // Mozda neka provera, da ne budemo revertovani
     console.log("Lutrija " + lotteryAddress + " gotova, zovem draw winner");
+
+    const lottery = await createContractFromAddressAndABILocation(lotteryAddress, '../contracts/LotteryABI.json')
+    const rewardAmount = (await Contracts.execute(lottery, "getYieldAmountInWEI", [], 0, bot)).result || 0;
+    const acceptableCompensation = BigInt(2) * BigInt(863210) * BigInt(ethers.formatUnits(await provider.send("eth_gasPrice", []), 'wei'))
+
+    if (rewardAmount < acceptableCompensation)
+        return console.log(`Lutrija ${lotteryAddress} mala (yield je ${rewardAmount} WEI)`);
+
+    console.log(await Contracts.execute(lottery, "drawWinner", [], 0, bot))
+    // Simulirati ChainLink
+    console.log("draw winner izvrsen")
 }
 
-const handleNewLottery = async (address) => {
-    console.log("Sada trackujem " + address);
-    const lotteryABIPath = path.join(__dirname, '../contracts/LotteryABI.json');
-    const lotteryABIContents = await fs.readFile(lotteryABIPath, { encoding: 'utf8' });
-    const lotteryABI = JSON.parse(lotteryABIContents);
+const createContractFromAddressAndABILocation = async (address, ABILocation) => {
+    const ABIPath = path.join(__dirname, ABILocation);
+    const ABIContents = await fs.readFile(ABIPath, { encoding: 'utf8' });
+    const ABI = JSON.parse(ABIContents);
+    return new ethers.Contract(address, ABI);
+}
 
-    const contract = new ethers.Contract(address, lotteryABI);
+const handleNewLottery = async (address) => {//'../contracts/LotteryABI.json'
+    const contract = await createContractFromAddressAndABILocation(address, '../contracts/LotteryABI.json')
 
     const result = await Contracts.execute(contract, "getEnd", [], 0, bot);
     const end = parseInt(result.result);
     console.log(`Lutrija ${address} se zavrsava ${(new Date(end * 1000)).toLocaleString()}`)
-    console.log("Kraj je " + end);
     const winnerDrawn = false;// Izracunati i ovo
     if (winnerDrawn)
         return;
@@ -37,11 +49,8 @@ const handleNewLottery = async (address) => {
 
 const lookForUpdate = async () => {
     const factoryAddressPath = path.join(__dirname, '../contracts/factoryAddress.txt');
-    const factoryABIPath = path.join(__dirname, '../contracts/FactoryABI.json');
-    const factoryABIContents = await fs.readFile(factoryABIPath, { encoding: 'utf8' });
     const factoryAddress = await fs.readFile(factoryAddressPath, { encoding: 'utf8' });
-    const factoryABI = JSON.parse(factoryABIContents);
-    const contract = new ethers.Contract(factoryAddress, factoryABI);
+    const contract = await createContractFromAddressAndABILocation(factoryAddress, '../contracts/FactoryABI.json');
     const result = await Contracts.execute(contract, "getLotteries", [], 0, bot);
     for (const contractAddress of result.result) {
         if (contracts[contractAddress])
@@ -73,4 +82,4 @@ const checkForEnded = async () => {
     }
 }
 
-setInterval(checkForEnded, 10000);
+setInterval(checkForEnded, 1000);

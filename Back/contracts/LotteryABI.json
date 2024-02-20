@@ -16,6 +16,19 @@
     "type": "constructor"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "ert",
+        "type": "uint256"
+      }
+    ],
+    "name": "Emklvmt",
+    "type": "event"
+  },
+  {
     "stateMutability": "payable",
     "type": "fallback"
   },
@@ -33,14 +46,21 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "drawWinner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "rN",
+        "name": "randomness",
         "type": "uint256"
       }
     ],
-    "name": "drawWinner",
+    "name": "fulfillRandomness23",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -157,6 +177,19 @@
   },
   {
     "inputs": [],
+    "name": "getYieldAmountInWEI",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "isRandomnessRequested",
     "outputs": [
       {
@@ -179,6 +212,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "linkBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

@@ -139,9 +139,8 @@ describe("Winner mechanism", async () => {
         expect((await Contracts.execute(lottery, "getWinner", [], 0, bot)).ok).to.equal(false);
         const oldBalance = await getBalance(bot)
 
-
-        console.log(await Contracts.execute(lottery, "drawWinner", [], 0, bot))
-        console.log(await Contracts.execute(lottery, "fulfillRandomness23", [Math.floor(Math.random() * 300000000000)], 0, bot))
+        await Contracts.execute(lottery, "drawWinner", [], 0, bot)
+        await Contracts.execute(lottery, "fulfillRandomness23", [Math.floor(Math.random() * 300000000000)], 0, bot)
         expect(await getBalance(bot)).to.greaterThanOrEqual(oldBalance);
 
         const winnerAddress = (await Contracts.execute(lottery, "getWinner", [], 0, bot)).result;
@@ -149,7 +148,7 @@ describe("Winner mechanism", async () => {
         for (const user of users)
             if (user.address == winnerAddress)
                 winner = user;
-        console.log(winner)
+
         const balance1 = (await Contracts.execute(lottery, "getBalance", [winner.address], 0, winner)).result
         await Contracts.execute(lottery, "win", [], 0, (await hre.ethers.getSigners())[18])
 
@@ -238,7 +237,7 @@ describe("Lottery Factory", async () => {
 
         for (const lottery of globalS.lotteries) {
             const oldBalance = await getBalance(globalS.bot)
-            console.log(await Contracts.execute(lottery, "drawWinner", [], 0, globalS.bot));
+            await Contracts.execute(lottery, "drawWinner", [], 0, globalS.bot);
             await Contracts.execute(lottery, "fulfillRandomness23", [Math.floor(Math.random() * 300000000000)], 0, globalS.bot)
             await hre.network.provider.send("evm_mine");
             const newBalance = await getBalance(globalS.bot)

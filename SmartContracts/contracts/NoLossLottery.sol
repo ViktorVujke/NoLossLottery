@@ -73,7 +73,6 @@ contract NoLossLottery is VRFConsumerBase {
     uint256 totalEntries = 0;
 
     function deposit(uint256 amount) external {
-
         require(block.timestamp < end, "Lottery over");
         require(amount > 0, "Amount must be greater than 0");
         require(
@@ -137,6 +136,28 @@ contract NoLossLottery is VRFConsumerBase {
         return aToken.balanceOf(address(this)) - supplied;
     }
 
+    function getYieldAmountInWEI() external view returns (uint256) {
+        DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(
+            address(tokenContract)
+        );
+        IERC20 aToken = IERC20(reserveData.aTokenAddress);
+        uint256 amountInERC20 = aToken.balanceOf(address(this)) - supplied;
+        
+        if(amountInERC20 == 0)
+            return 0;
+
+        address[] memory path = new address[](2);
+        path[0] = address(tokenContract);
+        path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+        uint[] memory amounts = uniswapRouter.getAmountsOut(
+            amountInERC20,
+            path
+        );
+
+        return amounts[1];
+    }
+
     function getEnd() public view returns (uint256) {
         return end;
     }
@@ -157,9 +178,8 @@ contract NoLossLottery is VRFConsumerBase {
         balances[msg.sender].amount -= amount;
     }
 
-    function getLinkForRandomness() internal{
-
-         address[] memory linkPath = new address[](3);
+    function getLinkForRandomness() internal {
+        address[] memory linkPath = new address[](3);
         linkPath[0] = address(tokenContract); // The token you are swapping from
         linkPath[1] = uniswapRouter.WETH(); // The intermediary token, WETH
         linkPath[2] = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // LINK token address
@@ -175,18 +195,21 @@ contract NoLossLottery is VRFConsumerBase {
             )[0];
 
             require(
-            getYieldAmount() >= tokenAmountRequired,
-            "You do not have enough tokens in lottery winnings to trigger link purchase"
+                getYieldAmount() >= tokenAmountRequired,
+                "You do not have enough tokens in lottery winnings to trigger link purchase"
             );
 
-            lendingPool.withdraw(address(tokenContract), tokenAmountRequired, address(this));
+            lendingPool.withdraw(
+                address(tokenContract),
+                tokenAmountRequired,
+                address(this)
+            );
             // Ensure the contract has enough tokens to perform the swap
             require(
                 IERC20(tokenContract).balanceOf(address(this)) >=
                     tokenAmountRequired,
                 "Not enough tokens for LINK purchase"
             );
-            
 
             // Approve Uniswap router to spend tokens
             IERC20(tokenContract).approve(
@@ -217,24 +240,23 @@ contract NoLossLottery is VRFConsumerBase {
         );
     }
 
-    function linkBalance() public returns(uint256){
+    function linkBalance() public returns (uint256) {
         getLinkForRandomness();
-                    emit Emklvmt( LINK.balanceOf(address(this)));
+        emit Emklvmt(LINK.balanceOf(address(this)));
     }
 
-
     function drawWinner() external {
-
         uint256 totalYield = getYieldAmount();
         require(block.timestamp >= end, "Lottery still in progress");
         require(!isRandomnessRequested, "Randomness already requested");
-       
+
         getLinkForRandomness();
-        
+
         getRandomNumber();
         isRandomnessRequested = true;
 
-        uint256 estimatedGas = 823452 * tx.gasprice;
+        // TODO videti jel ovo dobro
+        uint256 estimatedGas = 863210 * tx.gasprice;
 
         address[] memory path = new address[](2);
         path[0] = address(tokenContract);
@@ -314,14 +336,11 @@ contract NoLossLottery is VRFConsumerBase {
     }
 
     // Chainlink VRF callback function
-    function fulfillRandomness23(
-        uint256 randomness
-    ) external  {
+    function fulfillRandomness23(uint256 randomness) external {
         randomNumber = randomness;
-        isRandomnessRequested = false; // Reset the flag
-        // Now you can proceed with any logic that depends on the random number.
     }
-        function fulfillRandomness(
+
+    function fulfillRandomness(
         bytes32 /* requestId */,
         uint256 randomness
     ) internal override {
