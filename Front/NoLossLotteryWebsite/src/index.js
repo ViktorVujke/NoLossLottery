@@ -24,8 +24,7 @@ import "assets/scss/blk-design-system-react.scss";
 import "assets/demo/demo.css";
 
 import Index from "views/Index.js";
-import LandingPage from "views/examples/LandingPage.js";
-import {NextUIProvider} from "@nextui-org/react";
+import LandingPage from "views/LandingPage.js";
 
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
