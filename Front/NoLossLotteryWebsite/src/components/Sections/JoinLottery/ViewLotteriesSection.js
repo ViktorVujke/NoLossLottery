@@ -1,5 +1,5 @@
 import React from 'react';
-import DarkLotteriesTable from "./SectionComponents/DarkLotteriesTable";
+import DarkLotteriesTable from "../SectionComponents/DarkLotteriesTable";
 import styled from 'styled-components';
 
 const ResponsiveContainer = styled.div`

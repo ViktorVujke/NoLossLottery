@@ -35,32 +35,9 @@ export default function Footer() {
       <Container>
         <Row>
           <Col md="3">
-            <h1 className="title">BLK•</h1>
+            <h1 className="title">WB</h1>
           </Col>
-          <Col md="3">
-            <Nav>
-              <NavItem>
-                <NavLink to="/" tag={Link}>
-                  Home
-                </NavLink>
-              </NavItem>
-              <NavItem>
-                <NavLink to="/landing-page" tag={Link}>
-                  Landing
-                </NavLink>
-              </NavItem>
-              <NavItem>
-                <NavLink to="/register-page" tag={Link}>
-                  Register
-                </NavLink>
-              </NavItem>
-              <NavItem>
-                <NavLink to="/profile-page" tag={Link}>
-                  Profile
-                </NavLink>
-              </NavItem>
-            </Nav>
-          </Col>
+         
           <Col md="3">
             <Nav>
               <NavItem>
@@ -100,30 +77,8 @@ export default function Footer() {
               <UncontrolledTooltip delay={0} target="tooltip622135962">
                 Follow us
               </UncontrolledTooltip>
-              <Button
-                className="btn-icon btn-neutral btn-round btn-simple"
-                color="default"
-                href="https://www.facebook.com/creativetim"
-                id="tooltip230450801"
-                target="_blank"
-              >
-                <i className="fab fa-facebook-square" />
-              </Button>
-              <UncontrolledTooltip delay={0} target="tooltip230450801">
-                Like us
-              </UncontrolledTooltip>
-              <Button
-                className="btn-icon btn-neutral btn-round btn-simple"
-                color="default"
-                href="https://dribbble.com/creativetim"
-                id="tooltip318450378"
-                target="_blank"
-              >
-                <i className="fab fa-dribbble" />
-              </Button>
-              <UncontrolledTooltip delay={0} target="tooltip318450378">
-                Follow us
-              </UncontrolledTooltip>
+
+            
             </div>
           </Col>
         </Row>

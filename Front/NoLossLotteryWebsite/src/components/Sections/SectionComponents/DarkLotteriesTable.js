@@ -1,7 +1,7 @@
 import { MantineProvider, ColorSchemeProvider, useMantineTheme } from '@mantine/core';
 import { useMemo, useState } from 'react';
 import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
-import LotteriesTable from './LotteriesTable';
+import LotteriesTable from '../JoinLottery/LotteriesTable';
 
 // Your data and LotteriesTable component...
 
