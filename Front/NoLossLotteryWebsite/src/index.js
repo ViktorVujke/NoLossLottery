@@ -25,6 +25,7 @@ import "assets/demo/demo.css";
 
 import Index from "views/Index.js";
 import LandingPage from "views/examples/LandingPage.js";
+import {NextUIProvider} from "@nextui-org/react";
 
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
