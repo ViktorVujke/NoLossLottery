@@ -79,8 +79,8 @@ export default function IndexNavbar() {
       <Container>
         <div className="navbar-translate">
           <NavbarBrand to="/" tag={Link} id="navbar-brand">
-            <span>NLL• </span>
-            No Loss Lottery protocol
+            <span>WB• </span>
+            White Bean Lottery protocol
           </NavbarBrand>
           <UncontrolledTooltip placement="bottom" target="navbar-brand">
             Designed and Coded by Decenter R&D
