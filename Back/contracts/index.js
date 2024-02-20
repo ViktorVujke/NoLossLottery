@@ -12,8 +12,6 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
         if (!response.wait)
             return { ok: true, view: true, result: response };
 
-
-
         const receipt = await response.wait();
         const events = [];
         for (const log of receipt.logs) {
@@ -32,9 +30,18 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
         return { ok: true, view: false, events }
     }
     catch (e) {
+<<<<<<< HEAD
         console.log("sderes")
         console.log(e);
         return { ok: false, message: e.shortMessage || e.message };
+=======
+        const lines = [];
+        for (let row of e.stackTrace) {
+            if (row?.sourceReference?.line)
+                lines.push(row.sourceReference.line);
+        }
+        return { ok: false, message: e.shortMessage || e.message, lines };
+>>>>>>> 46e6b23af66d952a30bdb6039f75a556baaed9a6
     }
 
 }
