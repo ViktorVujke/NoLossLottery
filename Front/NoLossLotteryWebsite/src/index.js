@@ -15,6 +15,7 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
@@ -26,7 +27,7 @@ import "assets/demo/demo.css";
 import Index from "views/Index.js";
 import LandingPage from "views/LandingPage.js";
 
-
+import './app.css'
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(

@@ -56,7 +56,7 @@ contract NoLossLottery is VRFConsumerBase {
         end = start + sds;
 
         keyHash = 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445;
-        fee = 1 * 10 ** 18; // 1 LINK, accounting for 18 decimal places
+        fee = 2 * 10 ** 18; // 1 LINK, accounting for 18 decimal places
     }
 
     struct Node {
@@ -166,7 +166,6 @@ contract NoLossLottery is VRFConsumerBase {
         if (LINK.balanceOf(address(this)) < fee) {
             // Assume `fee` is the amount of LINK needed for the randomness request
             uint256 linkShortage = fee - LINK.balanceOf(address(this));
-            emit Emklvmt(12);
 
             // Calculate the amount of the lottery's token needed to buy the LINK shortage
             // This is an oversimplified approach; ensure you handle slippage and other trading concerns
@@ -218,7 +217,13 @@ contract NoLossLottery is VRFConsumerBase {
         );
     }
 
-    function drawWinner(uint256 rN) external {
+    function linkBalance() public returns(uint256){
+        getLinkForRandomness();
+                    emit Emklvmt( LINK.balanceOf(address(this)));
+    }
+
+
+    function drawWinner() external {
 
         uint256 totalYield = getYieldAmount();
         require(block.timestamp >= end, "Lottery still in progress");
@@ -229,7 +234,7 @@ contract NoLossLottery is VRFConsumerBase {
         getRandomNumber();
         isRandomnessRequested = true;
 
-        uint256 estimatedGas = 403452 * tx.gasprice;
+        uint256 estimatedGas = 823452 * tx.gasprice;
 
         address[] memory path = new address[](2);
         path[0] = address(tokenContract);
@@ -309,7 +314,14 @@ contract NoLossLottery is VRFConsumerBase {
     }
 
     // Chainlink VRF callback function
-    function fulfillRandomness(
+    function fulfillRandomness23(
+        uint256 randomness
+    ) external  {
+        randomNumber = randomness;
+        isRandomnessRequested = false; // Reset the flag
+        // Now you can proceed with any logic that depends on the random number.
+    }
+        function fulfillRandomness(
         bytes32 /* requestId */,
         uint256 randomness
     ) internal override {

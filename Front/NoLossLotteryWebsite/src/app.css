@@ -1,0 +1,22 @@
+/* Custom Scrollbar Styling */
+/* Works on Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+    width: 12px; /* Width of the scrollbar */
+  }
+  
+  *::-webkit-scrollbar-track {
+    background: #1e1e24; /* Track color */
+  }
+  
+  *::-webkit-scrollbar-thumb {
+    background-color: #5a5a66; /* Handle color */
+    border-radius: 6px; /* Handle border radius */
+    border: 3px solid #1e1e24; /* Handles border color similar to track color */
+  }
+  
+  /* Works on Firefox */
+  * {
+    scrollbar-width: thin; /* "auto" or "thin" */
+    scrollbar-color: #5a5a66 #1e1e24; /* Handle and track color */
+  }
+  

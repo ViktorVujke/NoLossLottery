@@ -27,10 +27,15 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
         return { ok: true, view: false, events }
     }
     catch (e) {
-        const lines = [];
-        for (let row of e.stackTrace) {
-            if (row?.sourceReference?.line)
-                lines.push(row.sourceReference.line);
+        let lines = [];
+        if (e.stackTrace) {
+            for (let row of e.stackTrace) {
+                if (row?.sourceReference?.line)
+                    lines.push(row.sourceReference.line);
+            }
+        }
+        else{
+            lines = null;
         }
         return { ok: false, message: e.shortMessage || e.message, lines };
     }

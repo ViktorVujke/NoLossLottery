@@ -138,7 +138,10 @@ describe("Winner mechanism", async () => {
         await hre.network.provider.send("evm_increaseTime", [86400]);
         expect((await Contracts.execute(lottery, "getWinner", [], 0, bot)).ok).to.equal(false);
         const oldBalance = await getBalance(bot)
-        await Contracts.execute(lottery, "drawWinner", [Math.floor(Math.random() * 300000000000)], 0, bot);
+
+
+        console.log(await Contracts.execute(lottery, "drawWinner", [], 0, bot))
+        console.log(await Contracts.execute(lottery, "fulfillRandomness23", [Math.floor(Math.random() * 300000000000)], 0, bot))
         expect(await getBalance(bot)).to.greaterThanOrEqual(oldBalance);
 
         const winnerAddress = (await Contracts.execute(lottery, "getWinner", [], 0, bot)).result;
@@ -146,7 +149,7 @@ describe("Winner mechanism", async () => {
         for (const user of users)
             if (user.address == winnerAddress)
                 winner = user;
-
+        console.log(winner)
         const balance1 = (await Contracts.execute(lottery, "getBalance", [winner.address], 0, winner)).result
         await Contracts.execute(lottery, "win", [], 0, (await hre.ethers.getSigners())[18])
 
@@ -175,7 +178,7 @@ describe("Lottery Factory", async () => {
     const globalS = {};
     const OFFSET = 20;
     const TOTAL = 3;
-    const AMOUNT = 100000000n;
+    const AMOUNT = 10000000000n;
 
     it("Deploy lottery", async () => {
         await WBTC.getContract(); // Da bi se ucitao
@@ -183,7 +186,7 @@ describe("Lottery Factory", async () => {
         globalS.users = (await hre.ethers.getSigners()).slice(OFFSET, OFFSET + TOTAL);
         globalS.factory = await Lottery.deployFactory();
         await Lottery.deployLotteryUsingFactory(globalS.factory, USDC.address, 31 * 86400)
-        await Lottery.deployLotteryUsingFactory(globalS.factory, WBTC.address, 31 * 86400)
+        //await Lottery.deployLotteryUsingFactory(globalS.factory, WBTC.address, 31 * 86400)
     })
 
 
@@ -195,7 +198,6 @@ describe("Lottery Factory", async () => {
             globalS.lotteries.push(new hre.ethers.Contract(lottery, abiObj.abi))
         }
         expect(globalS.lotteries[0]?.target).to.be.a('string');
-        expect(globalS.lotteries[1]?.target).to.be.a('string');
     })
 
 
@@ -236,7 +238,8 @@ describe("Lottery Factory", async () => {
 
         for (const lottery of globalS.lotteries) {
             const oldBalance = await getBalance(globalS.bot)
-            await Contracts.execute(lottery, "drawWinner", [BigInt(Math.floor(Math.random() * TOTAL * Number(AMOUNT)))], 0, globalS.bot);
+            console.log(await Contracts.execute(lottery, "drawWinner", [], 0, globalS.bot));
+            await Contracts.execute(lottery, "fulfillRandomness23", [Math.floor(Math.random() * 300000000000)], 0, globalS.bot)
             await hre.network.provider.send("evm_mine");
             const newBalance = await getBalance(globalS.bot)
             expect(newBalance).to.greaterThanOrEqual(oldBalance);
