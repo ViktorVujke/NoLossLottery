@@ -32,7 +32,8 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
         return { ok: true, view: false, events }
     }
     catch (e) {
-        //console.log(e);
+        console.log("sderes")
+        console.log(e);
         return { ok: false, message: e.shortMessage || e.message };
     }
 
