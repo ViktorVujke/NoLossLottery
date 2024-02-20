@@ -1,5 +1,4 @@
 const Contracts = {};
-
 /***
  * weiSent BigInt
  */
@@ -8,10 +7,8 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
         const connectedContract = await contract.connect(wallet);
         const payload = { value: weiSent } || undefined;
         const response = payload ? await connectedContract[functionName](...args, payload) : await connectedContract[functionName](...args)
-
         if (!response.wait)
             return { ok: true, view: true, result: response };
-
         const receipt = await response.wait();
         const events = [];
         for (const log of receipt.logs) {
@@ -37,7 +34,5 @@ Contracts.execute = async (contract, functionName, args, weiSent, wallet) => {
         }
         return { ok: false, message: e.shortMessage || e.message, lines };
     }
-
 }
-
 module.exports = { Contracts }

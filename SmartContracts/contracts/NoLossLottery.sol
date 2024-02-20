@@ -8,7 +8,7 @@ import "../interfaces/IPoolAddressesProvider.sol";
 import "../interfaces/IUniswapV2Router.sol";
 import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBase.sol";
 
-contract NoLossLottery is VRFConsumerBase  {
+contract NoLossLottery is VRFConsumerBase {
     IERC20 public tokenContract;
     IUniswapV2Router public uniswapRouter;
     IPool public lendingPool;
@@ -16,7 +16,6 @@ contract NoLossLottery is VRFConsumerBase  {
     uint256 start;
     uint256 end;
     uint256 minDeposit;
-
 
     // Chainlink VRF variables
     bytes32 internal keyHash;
@@ -26,14 +25,20 @@ contract NoLossLottery is VRFConsumerBase  {
     uint256 public randomResult;
     uint256 randomNumber;
     bool public isRandomnessRequested = false; // To prevent multiple requests
-
+    event Emklvmt(uint256 ert);
 
     receive() external payable {}
 
     fallback() external payable {}
 
-    constructor(address tokenContractAddress, uint256 sds) 
-    VRFConsumerBase(0xf0d54349aDdcf704F77AE15b96510dEA15cb7952, 0x514910771AF9Ca656af840dff83E8264EcF986CA)     
+    constructor(
+        address tokenContractAddress,
+        uint256 sds
+    )
+        VRFConsumerBase(
+            0xf0d54349aDdcf704F77AE15b96510dEA15cb7952,
+            0x514910771AF9Ca656af840dff83E8264EcF986CA
+        )
     {
         block.timestamp;
         tokenContract = IERC20(tokenContractAddress);
@@ -51,7 +56,7 @@ contract NoLossLottery is VRFConsumerBase  {
         end = start + sds;
 
         keyHash = 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445;
-        fee = 1 * 10**18; // 1 LINK, accounting for 18 decimal places   
+        fee = 1 * 10 ** 18; // 1 LINK, accounting for 18 decimal places
     }
 
     struct Node {
@@ -68,6 +73,7 @@ contract NoLossLottery is VRFConsumerBase  {
     uint256 totalEntries = 0;
 
     function deposit(uint256 amount) external {
+
         require(block.timestamp < end, "Lottery over");
         require(amount > 0, "Amount must be greater than 0");
         require(
@@ -151,28 +157,43 @@ contract NoLossLottery is VRFConsumerBase  {
         balances[msg.sender].amount -= amount;
     }
 
+    function getLinkForRandomness() internal{
 
-    function drawWinner(uint256 rN) external {
-        uint256 totalYield = getYieldAmount();
-        require(block.timestamp >= end, "Lottery still in progress");
-        require(!isRandomnessRequested, "Randomness already requested");
-        address[] memory linkPath = new address[](3);
+         address[] memory linkPath = new address[](3);
         linkPath[0] = address(tokenContract); // The token you are swapping from
         linkPath[1] = uniswapRouter.WETH(); // The intermediary token, WETH
         linkPath[2] = 0x514910771AF9Ca656af840dff83E8264EcF986CA; // LINK token address
         if (LINK.balanceOf(address(this)) < fee) {
             // Assume `fee` is the amount of LINK needed for the randomness request
             uint256 linkShortage = fee - LINK.balanceOf(address(this));
+            emit Emklvmt(12);
 
             // Calculate the amount of the lottery's token needed to buy the LINK shortage
             // This is an oversimplified approach; ensure you handle slippage and other trading concerns
-            uint256 tokenAmountRequired = uniswapRouter.getAmountsIn(linkShortage, linkPath)[0];
+            uint256 tokenAmountRequired = uniswapRouter.getAmountsIn(
+                linkShortage,
+                linkPath
+            )[0];
 
+            require(
+            getYieldAmount() >= tokenAmountRequired,
+            "You do not have enough tokens in lottery winnings to trigger link purchase"
+            );
+
+            lendingPool.withdraw(address(tokenContract), tokenAmountRequired, address(this));
             // Ensure the contract has enough tokens to perform the swap
-            require(IERC20(tokenContract).balanceOf(address(this)) >= tokenAmountRequired, "Not enough tokens for LINK purchase");
+            require(
+                IERC20(tokenContract).balanceOf(address(this)) >=
+                    tokenAmountRequired,
+                "Not enough tokens for LINK purchase"
+            );
+            
 
             // Approve Uniswap router to spend tokens
-            IERC20(tokenContract).approve(address(uniswapRouter), tokenAmountRequired);
+            IERC20(tokenContract).approve(
+                address(uniswapRouter),
+                tokenAmountRequired
+            );
 
             // Perform the swap from the lottery's token to LINK
             // Note: Adjust the `swap` function parameters as needed
@@ -185,15 +206,28 @@ contract NoLossLottery is VRFConsumerBase  {
             );
 
             // After swap, check LINK balance again to ensure there's enough for the fee
-            require(LINK.balanceOf(address(this)) >= fee, "Swap failed to provide enough LINK");
+            require(
+                LINK.balanceOf(address(this)) >= fee,
+                "Swap failed to provide enough LINK"
+            );
         }
 
+        require(
+            LINK.balanceOf(address(this)) >= fee,
+            "Not enough LINK - fill contract with faucet"
+        );
+    }
 
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
+    function drawWinner(uint256 rN) external {
 
+        uint256 totalYield = getYieldAmount();
+        require(block.timestamp >= end, "Lottery still in progress");
+        require(!isRandomnessRequested, "Randomness already requested");
+       
+        getLinkForRandomness();
+        
         getRandomNumber();
         isRandomnessRequested = true;
-
 
         uint256 estimatedGas = 403452 * tx.gasprice;
 
@@ -264,14 +298,21 @@ contract NoLossLottery is VRFConsumerBase  {
             addr = balances[addr].next;
         }
     }
-     // Function to request randomness
+
+    // Function to request randomness
     function getRandomNumber() public returns (bytes32 requestId) {
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK - fill contract with faucet");
+        require(
+            LINK.balanceOf(address(this)) >= fee,
+            "Not enough LINK - fill contract with faucet"
+        );
         return requestRandomness(keyHash, fee);
     }
 
     // Chainlink VRF callback function
-    function fulfillRandomness(bytes32 /* requestId */, uint256 randomness) internal override {
+    function fulfillRandomness(
+        bytes32 /* requestId */,
+        uint256 randomness
+    ) internal override {
         randomResult = randomness;
         isRandomnessRequested = false; // Reset the flag
         // Now you can proceed with any logic that depends on the random number.
