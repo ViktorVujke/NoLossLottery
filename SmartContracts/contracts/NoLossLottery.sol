@@ -131,6 +131,10 @@ contract NoLossLottery is VRFConsumerBase  {
         return aToken.balanceOf(address(this)) - supplied;
     }
 
+    function getEnd() public view returns (uint256) {
+        return end;
+    }
+
     function withdraw(uint256 amount) external {
         require(
             balances[msg.sender].amount >= amount,
