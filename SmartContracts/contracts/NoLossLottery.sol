@@ -15,6 +15,7 @@ contract NoLossLottery is VRFConsumerBase {
     IPoolAddressesProvider public poolAddressesProvider;
     uint256 start;
     uint256 end;
+    uint256 depositEnd;
     uint256 minDeposit;
 
     // Chainlink VRF variables
@@ -25,6 +26,7 @@ contract NoLossLottery is VRFConsumerBase {
     uint256 public randomResult;
     uint256 randomNumber;
     bool public isRandomnessRequested = false; // To prevent multiple requests
+    address owner;
     event Emklvmt(uint256 ert);
 
     receive() external payable {}
@@ -33,13 +35,26 @@ contract NoLossLottery is VRFConsumerBase {
 
     constructor(
         address tokenContractAddress,
-        uint256 sds
+        address ownerAddress,
+        uint256 minimalDepositAmount,
+        uint256 durationInDays,
+        uint256 depositTimeLimitInDays
     )
         VRFConsumerBase(
             0xf0d54349aDdcf704F77AE15b96510dEA15cb7952,
             0x514910771AF9Ca656af840dff83E8264EcF986CA
         )
     {
+        require(
+            minimalDepositAmount > 0,
+            "Minimal deposit amount has to be at least 1 unit"
+        );
+        require(durationInDays > 0, "Lottery has to last at least 1 day");
+        require(
+            depositTimeLimitInDays > 0 &&
+                depositTimeLimitInDays <= durationInDays,
+            "Deposit time limit has to be positive and <= duration"
+        );
         block.timestamp;
         tokenContract = IERC20(tokenContractAddress);
         uniswapRouter = IUniswapV2Router(
@@ -51,9 +66,11 @@ contract NoLossLottery is VRFConsumerBase {
         address lendingPoolAddress = poolAddressesProvider.getPool();
         lendingPool = IPool(lendingPoolAddress);
 
-        minDeposit = 10;
+        minDeposit = minimalDepositAmount;
+        owner = ownerAddress;
         start = block.timestamp;
-        end = start + sds;
+        depositEnd = start + depositTimeLimitInDays * 86400;
+        end = start + durationInDays * 86400;
 
         keyHash = 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445;
         fee = 2 * 10 ** 18; // 1 LINK, accounting for 18 decimal places
@@ -71,10 +88,27 @@ contract NoLossLottery is VRFConsumerBase {
     address winner = address(0);
     uint256 supplied = 0;
     uint256 totalEntries = 0;
+    uint256 prize = 0;
+    
+    modifier ownerOnly() {
+        require(msg.sender == owner, "Access denied: Caller is not the owner");
+        _;
+    }
+
+    function getMinimalAllowedDeposit() external view returns (uint256) {
+        return minDeposit;
+    }
 
     function deposit(uint256 amount) external {
-        require(block.timestamp < end, "Lottery over");
-        require(amount > 0, "Amount must be greater than 0");
+        // require(block.timestamp < end, "Lottery is over");
+        require(
+            block.timestamp < depositEnd,
+            "You can no longer deposit in this lottery"
+        );
+        require(
+            amount + balances[msg.sender].amount >= minDeposit,
+            "Your total deposited amount cannot be lower than minimal allowed deposit"
+        );
         require(
             tokenContract.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"
@@ -142,9 +176,7 @@ contract NoLossLottery is VRFConsumerBase {
         );
         IERC20 aToken = IERC20(reserveData.aTokenAddress);
         uint256 amountInERC20 = aToken.balanceOf(address(this)) - supplied;
-        
-        if(amountInERC20 == 0)
-            return 0;
+        if (amountInERC20 == 0) return 0;
 
         address[] memory path = new address[](2);
         path[0] = address(tokenContract);
@@ -163,6 +195,11 @@ contract NoLossLottery is VRFConsumerBase {
     }
 
     function withdraw(uint256 amount) external {
+        require(
+            (balances[msg.sender].amount - amount >= minDeposit) ||
+                (balances[msg.sender].amount == amount),
+            "After your withdrawal, your deposited amount can either be 0 (withdraw all your balance) or greater than or equal to minimal deposited amout (partial withdraw)"
+        );
         require(
             balances[msg.sender].amount >= amount,
             "You do not have enough tokens in lottery"
@@ -240,7 +277,7 @@ contract NoLossLottery is VRFConsumerBase {
         );
     }
 
-    function linkBalance() public returns (uint256) {
+    function linkBalance() public {
         getLinkForRandomness();
         emit Emklvmt(LINK.balanceOf(address(this)));
     }
@@ -285,6 +322,7 @@ contract NoLossLottery is VRFConsumerBase {
             0
         );
 
+        prize = totalYield - amountInMax;
         (bool success, ) = msg.sender.call{value: estimatedGas}("");
         require(success, "Failed to send ETH to cover gas cost");
     }
@@ -309,13 +347,14 @@ contract NoLossLottery is VRFConsumerBase {
 
     function win() external {
         require(block.timestamp >= end, "Lottery still in progress");
-        require(winner == address(0), "Lottery already won");
+        require(prize > 0, "Lottery already won");
         uint256 num = randomNumber % totalEntries;
         address addr = head;
         while (addr != address(0)) {
             uint256 ent = balances[addr].entries;
             if (num < ent) {
                 winner = addr;
+                prize = 0;
                 uint256 yield = getYieldAmount();
                 balances[addr].amount += yield;
                 supplied += yield;
@@ -324,6 +363,15 @@ contract NoLossLottery is VRFConsumerBase {
             num -= ent;
             addr = balances[addr].next;
         }
+    }
+
+    function getWithdrawableOwnerProfit() public view returns (uint256) {
+        return getYieldAmount() - prize;
+    }
+
+    function withdrawOwnerProfit() external ownerOnly {
+        uint256 profit = getWithdrawableOwnerProfit();
+        lendingPool.withdraw(address(tokenContract), profit, msg.sender);
     }
 
     // Function to request randomness

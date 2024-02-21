@@ -4,7 +4,8 @@ const fs = require('fs').promises;
 const path = require('path');
 
 async function main() {
-    const factory = await Lottery.deployFactory();
+    const bot = (await hre.ethers.getSigners())[19];
+    const factory = await Lottery.deployFactory(bot.address);
     const factoryAddress = factory.target;
     const factoryABI = (await hre.artifacts.readArtifact("NoLossLotteryFactory")).abi;
     const lotteryABI = (await hre.artifacts.readArtifact("NoLossLottery")).abi;

@@ -15,8 +15,10 @@ async function main() {
 
     const factory = new hre.ethers.Contract(factoryAddress, factoryABI);
 
-    const lotteryAddress = (await Contracts.execute(factory, "createLottery", [USDC.address, 31 * 86400], 0, (await hre.ethers.getSigners())[0])).events[0].args[0];
-
+    const creator = (await hre.ethers.getSigners())[0];
+    const createLotteryResult = await Contracts.execute(factory, "createLottery", [USDC.address, 1000, 31, 30], 0, creator);
+    console.log(createLotteryResult)
+    const lotteryAddress = createLotteryResult.events[0].args[0];
 
     const NoLossLotteryABI = await hre.artifacts.readArtifact("NoLossLottery");
     const lottery = new hre.ethers.Contract(lotteryAddress, NoLossLotteryABI.abi);

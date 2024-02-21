@@ -82,4 +82,4 @@ const checkForEnded = async () => {
     }
 }
 
-setInterval(checkForEnded, 1000);
+setInterval(checkForEnded, 3000);

@@ -25,7 +25,7 @@ describe("Lottery Contract", async () => {
         globalS.user = (await hre.ethers.getSigners())[0];
         await USDC.buy(globalS.user, 20000000n);
         globalS.initial = await USDC.getBalance(globalS.user);
-        globalS.lottery = await Lottery.deployUSDC(30000)
+        globalS.lottery = await Lottery.deployUSDC(30, globalS.user.address)
         await USDC.approve(globalS.user, 20000000n, globalS.lottery.target)
     })
 
@@ -39,6 +39,12 @@ describe("Lottery Contract", async () => {
         expect(result.ok).to.equal(false);
     })
 
+    it("Deposit less than minimum", async () => {
+        // Deluje bolje od standardnog nacina expectovanja za stvari koje ne rade
+        const result = await Contracts.execute(globalS.lottery, "deposit", [100n], 0, globalS.user);
+        expect(result.message).to.include("Your total deposited amount cannot be lower than minimal allowed deposit");
+    })
+
     it("Working deposit", async () => {
         const result = await Contracts.execute(globalS.lottery, "deposit", [10000000n], 0, globalS.user);
         expect((result.ok)).to.equal(true);
@@ -50,17 +56,21 @@ describe("Lottery Contract", async () => {
     })*/
 
     it("Increase over time", async () => {
-        await hre.network.provider.send("evm_increaseTime", [10000]);
+        await hre.network.provider.send("evm_increaseTime", [10 * 86400]);
         await hre.network.provider.send("evm_mine");
         const result = await Contracts.execute(globalS.lottery, "getYieldAmount", [], 0, globalS.user);
         expect(result.result).to.greaterThan(0n);
         globalS.amount = result.result;
     })
     it("Increase over time 2", async () => {
-        await hre.network.provider.send("evm_increaseTime", [10000]);
+        await hre.network.provider.send("evm_increaseTime", [10 * 86400]);
         await hre.network.provider.send("evm_mine");
         const result = await Contracts.execute(globalS.lottery, "getYieldAmount", [], 0, globalS.user);
         expect(result.result).to.greaterThan(globalS.amount);
+    })
+    it("Withdraw so it is less than minimal", async () => {
+        const result = await Contracts.execute(globalS.lottery, "withdraw", [9999999n], 0, globalS.user);
+        expect(result.message).to.include("After your withdrawal, your deposited amount can either be 0 (withdraw all your balance) or greater than or equal to minimal deposited amout (partial withdraw)");
     })
     it("Withdraw", async () => {
         const result = await Contracts.execute(globalS.lottery, "withdraw", [10000000n], 0, globalS.user);
@@ -96,7 +106,7 @@ describe("Lottery Contract", async () => {
         const result = await Contracts.execute(globalS.lottery, "deposit", [20000000n], 0, globalS.user);
         expect(result.ok).to.equal(true);
         expect((await Contracts.execute(globalS.lottery, "getSuppliedAmount", [], 0, globalS.user)).result).to.equal(50000000n);
-        await hre.network.provider.send("evm_increaseTime", [5000]);
+        await hre.network.provider.send("evm_increaseTime", [5 * 86400]);
         await USDC.buy(globalS.user, 20000000n);
         await USDC.approve(globalS.user, 20000000n, globalS.lottery.target)
         await Contracts.execute(globalS.lottery, "deposit", [20000000n], 0, globalS.user);
@@ -104,7 +114,7 @@ describe("Lottery Contract", async () => {
     })
 
     it("Final log", async () => {
-        await hre.network.provider.send("evm_increaseTime", [5000]);
+        await hre.network.provider.send("evm_increaseTime", [5 * 86400]);
         await Contracts.execute(globalS.lottery, "win", [Math.floor(Math.random() * 1000000001)], 0, globalS.user)
         const winner = (await Contracts.execute(globalS.lottery, "getWinner", [], 0, globalS.user)).result;
         if (winner == globalS.user.address) {
@@ -119,7 +129,7 @@ describe("Lottery Contract", async () => {
 
 describe("Winner mechanism", async () => {
     it("Multiple members", async () => {
-        const lottery = await Lottery.deployUSDC((60 + 1) * 86400) // 31 dan
+        const lottery = await Lottery.deployUSDC(61, (await hre.ethers.getSigners())[0].address)
 
         const bot = (await hre.ethers.getSigners())[19];
 
@@ -184,8 +194,8 @@ describe("Lottery Factory", async () => {
         globalS.bot = (await hre.ethers.getSigners())[19];
         globalS.users = (await hre.ethers.getSigners()).slice(OFFSET, OFFSET + TOTAL);
         globalS.factory = await Lottery.deployFactory();
-        await Lottery.deployLotteryUsingFactory(globalS.factory, USDC.address, 31 * 86400)
-        //await Lottery.deployLotteryUsingFactory(globalS.factory, WBTC.address, 31 * 86400)
+        await Lottery.deployLotteryUsingFactory(globalS.factory, USDC.address, 31, 30);
+        //await Lottery.deployLotteryUsingFactory(globalS.factory, WBTC.address, 31 * 86400) Premali yield, izbaceno
     })
 
 
@@ -248,8 +258,28 @@ describe("Lottery Factory", async () => {
             const result = await Contracts.execute(lottery, "getWinner", [], 0, globalS.bot);
             expect(result.result).to.equal(last.address);
             await Contracts.execute(lottery, "win", [], 0, last)
+            expect((await Contracts.execute(lottery, "getWithdrawableOwnerProfit", [], 0, globalS.bot)).result).to.be.equal(0);
             await hre.network.provider.send("evm_mine");
         }
+
+
+        await hre.network.provider.send("evm_increaseTime", [200 * 86400]); // Ostalo mu je 200 dana
+        await hre.network.provider.send("evm_mine");
+
+        for (const lottery of globalS.lotteries) {
+            const tokenAddress = (await Contracts.execute(lottery, "getTokenAddress", [], 0, last)).result;
+            const tokenObject = await ERC20.getObjectByAddress(tokenAddress);
+            const previousTokenBalance = await tokenObject.getBalance(globalS.bot);
+            const withdrawableAmount = (await Contracts.execute(lottery, "getWithdrawableOwnerProfit", [], 0, globalS.bot)).result;
+            expect(withdrawableAmount).to.be.greaterThan(0);
+            expect((await Contracts.execute(lottery, "withdrawOwnerProfit", [], 0, last)).message).to.include("Access denied: Caller is not the owner");
+            await Contracts.execute(lottery, "withdrawOwnerProfit", [], 0, globalS.bot);
+            const tokenBalance = await tokenObject.getBalance(globalS.bot);
+            expect(tokenBalance).to.be.greaterThanOrEqual(withdrawableAmount + previousTokenBalance);
+        }
+
+
+
 
         for (const lottery of globalS.lotteries) {
             const result = await Contracts.execute(lottery, "getBalance", [last.address], 0, last);
