@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { Uniswap } = require("../src/contracts/Uniswap");
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -17,61 +18,7 @@ async function main() {
 
   console.log("Deploying contract with the account:", wallet.address);
 
-  const SimpleDeposit = await hre.ethers.getContractFactory("SimpleDeposit");
-  // Pass the wallet instance instead of its address
-  const simpleDeposit = await SimpleDeposit.deploy(wallet);
-
-  await simpleDeposit.waitForDeployment();
-
-  console.log("SimpleDeposit contract deployed to:", simpleDeposit.target);
-
-  // Specify a minimum amount of USDC you'd accept for your ETH
-  const amountOutMin = hre.ethers.parseUnits("1000", 6); // Example: 10 USDC
-  // Use a deadline of 20 minutes from now
-  const deadline = Math.floor(Date.now() / 1000) + (20 * 60); // 20 minutes from the current Unix time
-
-  // Send 1 ETH to the contract for USDC
-  const ethToSend = hre.ethers.parseEther("1");
-
-  // Connect the contract to the wallet that will execute the transaction
-  const connectedContract = simpleDeposit.connect(wallet);
-
-  // Call depositETHForUSDC with the specified parameters and attached ETH value
-  const tx = await connectedContract.depositETHForUSDC(amountOutMin, deadline, { value: ethToSend });
-  await tx.wait();
-  const IERC20ABI = [
-    "function approve(address spender, uint256 amount) external returns (bool)",
-    "function balanceOf(address account) external view returns (uint256)", // Add balanceOf function
-    // Add other ERC20 functions here as needed
-  ];
-
-  // The address of the USDC token on your network (ensure it's correct for localhost or testnet)
-  const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  const usdcToken = new hre.ethers.Contract(usdcAddress, IERC20ABI, wallet);
-  console.log(simpleDeposit.target)
-  const depositAmount = await usdcToken.balanceOf(wallet.address);
-
-  // Approve the SimpleDeposit contract to spend 100 USDC on your behalf
-  await usdcToken.approve(simpleDeposit.target, depositAmount);
-  const userBalance1 = await connectedContract.getBalance(wallet.address);
-  console.log("User USDC Balance:",depositAmount.toString());
-
-  // Now you can deposit USDC into the SimpleDeposit contract
-  const depositTx = await connectedContract.topUpUSDC(100,{value:ethToSend});
-  await depositTx.wait();
-  // After the swap, check the USDC balance of the deployer in the contract
-
-  const userBalance = await connectedContract.getBalance(wallet.address);
-  const contractBalance = await connectedContract.checkContractBalance()
-  console.log("User USDC Balance in contract:", userBalance.toString());
-  console.log("Contract USDC Balance:", contractBalance.toString());
-
-  const a =await connectedContract.investContractsMoney(1000000)
-  await delayedGreeting()
-
-  const contractBalance2 = await connectedContract.checkContractBalance()
-  console.log("Contract USDC Balance new:", contractBalance2.toString());
-  console.log("Deposit function tested successfully.");
+  await Uniswap.buyExactUSDCForEth(wallet, 200000000000)
 }
 
 main().catch((error) => {

@@ -36,17 +36,15 @@ import {
 // core components
 import Footer from "components/Footer/Footer.js";
 import IndexNavbar from "components/Navbars/IndexNavbar";
-import bigChartData from "variables/charts.js";
 import ViewLotteriesSection from "components/Sections/JoinLottery/ViewLotteriesSection";
 import {NextUIProvider} from "@nextui-org/react";
-import DarkLotteriesTable from "components/Sections/SectionComponents/DarkLotteriesTable";
 import CreateLotterySection from "components/Sections/CreateLottery/CreateLotterySection";
-import CreateLotteryForm from "components/Sections/CreateLottery/CreateLotteryForm";
 import CreateLotteryModal from "components/Sections/CreateLottery/CreateLotteryModal";
+import JoinLotteryModal from "components/Sections/JoinLottery/JoinLotteryModal";
 
 export default function LandingPage() {
 
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [createLotteryModal, setCreateLotteryModal] = useState(false)
 
   React.useEffect(() => {
     document.body.classList.toggle("landing-page");
@@ -146,7 +144,7 @@ export default function LandingPage() {
       </section>
       <section style={{  }}>
         <div className="responsive-container" style={{ color: "#FFFFFF" }}>
-          <CreateLotterySection openLotteryCreateModal={setIsModalOpen}/>
+          <CreateLotterySection openLotteryCreateModal={setCreateLotteryModal}/>
         </div>
       </section>        
       <section className="section section-lg">
@@ -205,7 +203,7 @@ export default function LandingPage() {
         </section>
 
 
-      <CreateLotteryModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <CreateLotteryModal isOpen={createLotteryModal} onClose={() => setCreateLotteryModal(false)} />
         <Footer />
       </div>
       </NextUIProvider>  );

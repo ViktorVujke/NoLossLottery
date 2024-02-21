@@ -59,6 +59,24 @@ contract NoLossLottery is VRFConsumerBase {
         fee = 2 * 10 ** 18; // 1 LINK, accounting for 18 decimal places
     }
 
+    function getLotteryInfo()
+        public
+        view
+        returns (
+            address tokenAddress,
+            uint256 totalSupplied,
+            uint256 currentReward,
+            uint256 daysUntilEnd
+        )
+    {
+        tokenAddress = address(tokenContract);
+        totalSupplied = supplied;
+        currentReward = getYieldAmount();
+        daysUntilEnd = (end > block.timestamp)
+            ? (end - block.timestamp) / 60 / 60 / 24
+            : 0; // Convert seconds to days
+    }
+
     struct Node {
         uint256 amount;
         uint256 entries;
@@ -142,9 +160,8 @@ contract NoLossLottery is VRFConsumerBase {
         );
         IERC20 aToken = IERC20(reserveData.aTokenAddress);
         uint256 amountInERC20 = aToken.balanceOf(address(this)) - supplied;
-        
-        if(amountInERC20 == 0)
-            return 0;
+
+        if (amountInERC20 == 0) return 0;
 
         address[] memory path = new address[](2);
         path[0] = address(tokenContract);

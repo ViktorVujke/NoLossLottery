@@ -24,7 +24,6 @@ import "assets/css/nucleo-icons.css";
 import "assets/scss/blk-design-system-react.scss";
 import "assets/demo/demo.css";
 
-import Index from "views/Index.js";
 import LandingPage from "views/LandingPage.js";
 
 import './app.css'
@@ -33,9 +32,7 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <BrowserRouter>
     <Routes>
-      <Route path="/components" element={<Index />} />
       <Route path="/landing-page" element={<LandingPage />} />
-
       <Route path="*" element={<Navigate to="/landing-page" replace />} />
     </Routes>
   </BrowserRouter>
