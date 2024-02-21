@@ -7,7 +7,7 @@ import ERC20ABI from '../../../contracts/ERC20ABI.js'; // Ensure this is correct
 
 import JoinLotteryModal from './JoinLotteryModal.js';
 
-const factoryContractAddress = '0xb6057e08a11da09a998985874fe2119e98db3d5d'; // Use your factory contract's address
+const factoryContractAddress = '0xad203b3144f8c09a20532957174fc0366291643c'; // Use your factory contract's address
 
 const LotteriesTable = () => {
   const [lotteries, setLotteries] = useState([]);

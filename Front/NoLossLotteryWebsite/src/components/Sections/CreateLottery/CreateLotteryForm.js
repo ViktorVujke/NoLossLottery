@@ -33,36 +33,36 @@ const CreateLotteryForm = () => {
       // so they only have read-only access
       console.log("MetaMask not installed; using read-only defaults")
       provider = ethers.getDefaultProvider()
-  
-  } 
+
+    }
     const provider = new ethers.BrowserProvider(window.ethereum);
     await provider.send("eth_requestAccounts", []); // Request account access
     const signer = await provider.getSigner();
 
     // Replace 'your_contract_address_here' with your actual contract address
-    const contractAddress = '0xb6057e08a11da09a998985874fe2119e98db3d5d';
+    const contractAddress = '0xad203b3144f8c09a20532957174fc0366291643c';
     const lotteryFactory = new ethers.Contract(contractAddress, LotteryFactoryABI, signer);
 
     try {
-        // Assuming the token field contains the address of the token contract
-        // and duration is entered in days (convert to seconds for the contract call)
-        const durationInSeconds = lottery.duration * 24 * 60 * 60;
-        console.log(lotteryFactory)
-        const tx = await lotteryFactory.createLottery(lottery.token, durationInSeconds);
-        await tx.wait();
-        console.log('Lottery created successfully');
-        // Optionally, clear form or provide user feedback
+      // Assuming the token field contains the address of the token contract
+      // and duration is entered in days (convert to seconds for the contract call)
+      const durationInDays = lottery.duration;
+      console.log(lotteryFactory)
+      const tx = await lotteryFactory.createLottery(lottery.token, 1000, durationInDays, durationInDays - 1);
+      await tx.wait();
+      console.log('Lottery created successfully');
+      // Optionally, clear form or provide user feedback
     } catch (error) {
       console.error('Error creating lottery:', error);
       console.log(error); // For complete error details
-  }
-};
+    }
+  };
 
 
   return (
     <form onSubmit={handleSubmit}>
       <FormGroup className="user-box">
-        <Input type="select" name="token" id="token" value={lottery.token} onChange={handleChange} required bsSize="lg" style={{ backgroundColor: '#333', color: '#fff', fontSize:15 }}>
+        <Input type="select" name="token" id="token" value={lottery.token} onChange={handleChange} required bsSize="lg" style={{ backgroundColor: '#333', color: '#fff', fontSize: 15 }}>
           <option value="">Select a token</option>
           <option value="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48">USDC</option>
           <option value="0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599">WBTC</option>
@@ -71,11 +71,11 @@ const CreateLotteryForm = () => {
           <option value="0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9">AAVE</option>
           {/* Add more cryptocurrency options as needed */}
         </Input>
-        <Label for="token" style={{color:'white'}}>Choose Lottery Token</Label>
+        <Label for="token" style={{ color: 'white' }}>Choose Lottery Token</Label>
       </FormGroup>
       <FormGroup className="user-box">
         <Input required type="number" name="duration" id="duration" value={lottery.duration} onChange={handleChange} bsSize="lg" />
-        <Label for="duration" style={{color:'white'}}>Duration (Days)</Label>
+        <Label for="duration" style={{ color: 'white' }}>Duration (Days)</Label>
       </FormGroup>
       <center>
         <button className="animated-button">

@@ -107,7 +107,7 @@ contract NoLossLottery is VRFConsumerBase {
     uint256 supplied = 0;
     uint256 totalEntries = 0;
     uint256 prize = 0;
-    
+
     modifier ownerOnly() {
         require(msg.sender == owner, "Access denied: Caller is not the owner");
         _;
@@ -384,10 +384,17 @@ contract NoLossLottery is VRFConsumerBase {
     }
 
     function getWithdrawableOwnerProfit() public view returns (uint256) {
+        if(!isRandomnessRequested){
+            return 0;
+        }
         return getYieldAmount() - prize;
     }
 
     function withdrawOwnerProfit() external ownerOnly {
+        require(
+            isRandomnessRequested,
+            "You can not withdraw before winner has been drawn"
+        );
         uint256 profit = getWithdrawableOwnerProfit();
         lendingPool.withdraw(address(tokenContract), profit, msg.sender);
     }
