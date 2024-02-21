@@ -1,116 +1,91 @@
-import { useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { N, ethers } from 'ethers';
 import { MantineReactTable, useMantineReactTable } from 'mantine-react-table';
+import LotteryFactoryABI from '../../../contracts/LotteryFactoryABI.js';
+import LotteryABI from '../../../contracts/LotteryABI.js'; // Ensure this is correctly imported
+import ERC20ABI from '../../../contracts/ERC20ABI.js'; // Ensure this is correctly imported
 
-// Dummy data for lotteries
-const data = [
-  {
-    address: "0x3a...d92",
-    token: "USDC",
-    TVL: 100000,
-    daysUntilEnding: 7,
-    currentReward: 500
-  },
-  {
-    address: "0x1b...f4e",
-    token: "DAI",
-    TVL: 50000,
-    daysUntilEnding: 12,
-    currentReward: 250
-  },
-  {
-    address: "0x7e...b3a",
-    token: "LINK",
-    TVL: 75000,
-    daysUntilEnding: 5,
-    currentReward: 375
-  },
-  {
-    address: "0x5a...c8d",
-    token: "ETH",
-    TVL: 200000,
-    daysUntilEnding: 10,
-    currentReward: 1000
-  },
-  {
-    address: "0x9f...a2c",
-    token: "AAVE",
-    TVL: 60000,
-    daysUntilEnding: 8,
-    currentReward: 300
-  },
-  {
-    address: "0x4e...1d4",
-    token: "BTC",
-    TVL: 250000,
-    daysUntilEnding: 15,
-    currentReward: 1250
-  },
-  {
-    address: "0x8f...c3d",
-    token: "UNI",
-    TVL: 40000,
-    daysUntilEnding: 9,
-    currentReward: 200
-  },
-  {
-    address: "0xae...b2b",
-    token: "SUSHI",
-    TVL: 30000,
-    daysUntilEnding: 4,
-    currentReward: 150
-  },
-  {
-    address: "0xbb...f8e",
-    token: "COMP",
-    TVL: 80000,
-    daysUntilEnding: 13,
-    currentReward: 400
-  },
-  {
-    address: "0xcd...9a3",
-    token: "SNX",
-    TVL: 70000,
-    daysUntilEnding: 11,
-    currentReward: 350
-  }
-];
+import JoinLotteryModal from './JoinLotteryModal.js';
 
+const factoryContractAddress = '0xb6057e08a11da09a998985874fe2119e98db3d5d'; // Use your factory contract's address
 
 const LotteriesTable = () => {
+  const [lotteries, setLotteries] = useState([]);
+  const [joinLotteryModal , setJoinLotteryModal] = useState(false)
+  const [currentLottery, setCurrentLottery] = useState(null)
+
+  useEffect(() => {
+    const fetchLotteries = async () => {
+      const provider = new ethers.JsonRpcProvider();
+      const factoryContract = new ethers.Contract(
+        factoryContractAddress,
+        LotteryFactoryABI,
+        provider
+      );
+
+      const lotteryAddresses = await factoryContract.getLotteries();
+      
+      const lotteryPromises = lotteryAddresses.map(async (address) => {
+        const lotteryContract = new ethers.Contract(
+          address,
+          LotteryABI,
+          provider
+        );
+        const info = await lotteryContract.getLotteryInfo();
+        const tokenContract = new ethers.Contract(info.tokenAddress, ERC20ABI, provider);
+
+        // Fetch the token's decimals
+        const decimals = await tokenContract.decimals();
+        console.log(info.totalSupplied)
+        return {
+          address: address,
+          token: info.tokenAddress,
+// Correct calculation of TVL using the token's decimals
+          TVL: ethers.formatUnits(info.totalSupplied, decimals),
+          daysUntilEnding: info.daysUntilEnd.toString(),
+          currentReward: ethers.formatUnits(info.currentReward, decimals),
+        };
+      });
+
+      const lotteriesData = await Promise.all(lotteryPromises);
+      console.log(lotteriesData)
+      setLotteries(lotteriesData);
+    };
+
+    fetchLotteries();
+  }, []);
+
   const columns = useMemo(
     () => [
-      {
-        accessorKey: 'address',
-        header: 'Address',
-      },
-      {
-        accessorKey: 'token',
-        header: 'Token',
-      },
-      {
-        accessorKey: 'TVL',
-        header: 'TVL',
-        // Custom cell rendering to format TVL as currency
-        Cell: ({ value }) => `$${value}`
-      },
-      {
-        accessorKey: 'daysUntilEnding',
-        header: 'Days Until Ending',
-      },
-      {
-        accessorKey: 'currentReward',
-        header: 'Current Reward',
-      },
+      { accessorKey: 'address', header: 'Address' },
+      { accessorKey: 'token', header: 'ERC20 Token Address' },
+      { accessorKey: 'TVL', header: 'TVL' },
+      { accessorKey: 'daysUntilEnding', header: 'Days Until Ending' },
+      { accessorKey: 'currentReward', header: 'Current Reward' },
     ],
     [],
   );
 
+  const handleRowClick = (row) => {
+    alert('Row clicked:', row);
+    // Place your function logic here. For example, opening a modal or calling another function.
+  };
+
   const table = useMantineReactTable({
     columns,
-    data,
+    data: lotteries,
+    mantineTableBodyRowProps: ({ row }) => ({
+      onClick: (event) => {
+        setCurrentLottery( row.original);
+        setJoinLotteryModal(true)
+      }
+      })
   });
 
-  return <MantineReactTable table={table} />;
+  return <>
+  <MantineReactTable table={table} />
+  <JoinLotteryModal isOpen={joinLotteryModal} onClose={() => setJoinLotteryModal(false)} lottery = {currentLottery}/>
+  </>;
 };
 
 export default LotteriesTable;

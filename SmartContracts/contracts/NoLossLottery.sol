@@ -76,6 +76,24 @@ contract NoLossLottery is VRFConsumerBase {
         fee = 2 * 10 ** 18; // 1 LINK, accounting for 18 decimal places
     }
 
+    function getLotteryInfo()
+        public
+        view
+        returns (
+            address tokenAddress,
+            uint256 totalSupplied,
+            uint256 currentReward,
+            uint256 daysUntilEnd
+        )
+    {
+        tokenAddress = address(tokenContract);
+        totalSupplied = supplied;
+        currentReward = getYieldAmount();
+        daysUntilEnd = (end > block.timestamp)
+            ? (end - block.timestamp) / 60 / 60 / 24
+            : 0; // Convert seconds to days
+    }
+
     struct Node {
         uint256 amount;
         uint256 entries;

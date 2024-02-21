@@ -4,176 +4,113 @@
     left: 50%;
     width: 400px;
     padding: 40px;
-    margin: 20px auto;
-    transform: translate(-50%, -55%);
-    background: rgba(0,0,0,.9);
+    transform: translate(-50%, -50%);
+    background: rgba(24, 20, 20, 0.987);
     box-sizing: border-box;
     box-shadow: 0 15px 25px rgba(0,0,0,.6);
     border-radius: 10px;
-  }
+}
   
-  .login-box p:first-child {
-    margin: 0 0 30px;
-    padding: 0;
-    color: #fff;
-    text-align: center;
-    font-size: 1.5rem;
-    font-weight: bold;
-    letter-spacing: 1px;
-  }
-  
-  .login-box .user-box {
+.login-box .user-box {
     position: relative;
-  }
+    margin-bottom: 40px; /* Increased spacing between form groups */
+}
   
-  .login-box .user-box input {
+.login-box .user-box input,
+.login-box .user-box .form-control { /* Added .form-control for Reactstrap inputs */
     width: 100%;
     padding: 10px 0;
     font-size: 16px;
     color: #fff;
-    margin-bottom: 30px;
     border: none;
     border-bottom: 1px solid #fff;
     outline: none;
     background: transparent;
-  }
-  
-  .login-box .user-box label {
+}
+
+.login-box .user-box .form-control { /* Specific styles for Reactstrap inputs */
+    border-radius: 0; /* Maintain consistency with the design */
+    box-shadow: none;
+    border-color: #fff; /* Ensure the border color matches the design */
+}
+
+.login-box .user-box label {
     position: absolute;
-    top: 0;
+    top: -20px; /* Adjusted for better alignment */
     left: 0;
     padding: 10px 0;
     font-size: 16px;
     color: #fff;
-    pointer-events: none;
     transition: .5s;
-  }
+    background: rgba(24, 20, 20, 0); /* Add background color to label for readability */
+    padding-left: 5px; /* Add padding to avoid overlap with the input border */
+    padding-right: 5px; /* Add padding to avoid overlap with the input border */
+}
   
-  .login-box .user-box input:focus ~ label,
-  .login-box .user-box input:valid ~ label {
-    top: -20px;
-    left: 0;
-    color: #fff;
+.login-box .user-box input:focus ~ label,
+.login-box .user-box .form-control:focus ~ label { /* Added .form-control:focus for Reactstrap inputs */
+    color: #bdb8b8;
     font-size: 12px;
-  }
-  
-  .login-box form a {
+}
+
+/* Adjustments for the submit button */
+.login-box form a,
+.login-box form button { /* Updated to include button for Reactstrap */
+    display: block; /* Center the button/a element */
+    width: 100%; /* Full width */
+    text-align: center; /* Center text for consistency */
+    margin: 0 auto; /* Center the element */
+    margin-top: 20px; /* Add some space above the submit button */
+}
+
+.animated-button {
     position: relative;
     display: inline-block;
-    padding: 10px 20px;
-    font-weight: bold;
-    color: #fff;
+    padding: 12px 24px;
+    border: none;
     font-size: 16px;
-    text-decoration: none;
-    text-transform: uppercase;
+    background-color: inherit;
+    border-radius: 100px;
+    font-weight: 600;
+    color: #ffffff40;
+    box-shadow: 0 0 0 2px #ffffff20;
+    cursor: pointer;
     overflow: hidden;
-    transition: .5s;
-    margin-top: 40px;
-    letter-spacing: 3px
+    transition: all 0.6s cubic-bezier(0.23, 1, 0.320, 1);
   }
   
-  .login-box a:hover {
-    background: #fff;
-    color: #272727;
-    border-radius: 5px;
-  }
-  
-  .login-box a span {
+  .animated-button span:last-child {
     position: absolute;
-    display: block;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    background-color: #2196F3;
+    border-radius: 50%;
+    opacity: 0;
+    transition: all 0.8s cubic-bezier(0.23, 1, 0.320, 1);
   }
   
-  .login-box a span:nth-child(1) {
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #fff);
-    animation: btn-anim1 1.5s linear infinite;
+  .animated-button span:first-child {
+    position: relative;
+    z-index: 1;
   }
   
-  @keyframes btn-anim1 {
-    0% {
-      left: -100%;
-    }
-  
-    50%,100% {
-      left: 100%;
-    }
+  .animated-button:hover {
+    box-shadow: 0 0 0 5px #2195f360;
+    color: #ffffff;
   }
   
-  .login-box a span:nth-child(2) {
-    top: -100%;
-    right: 0;
-    width: 2px;
-    height: 100%;
-    background: linear-gradient(180deg, transparent, #fff);
-    animation: btn-anim2 1.5s linear infinite;
-    animation-delay: .375s
+  .animated-button:active {
+    scale: 0.95;
   }
   
-  @keyframes btn-anim2 {
-    0% {
-      top: -100%;
-    }
-  
-    50%,100% {
-      top: 100%;
-    }
+  .animated-button:hover span:last-child {
+    width: 150px;
+    height: 150px;
+    opacity: 1;
   }
   
-  .login-box a span:nth-child(3) {
-    bottom: 0;
-    right: -100%;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(270deg, transparent, #fff);
-    animation: btn-anim3 1.5s linear infinite;
-    animation-delay: .75s
-  }
   
-  @keyframes btn-anim3 {
-    0% {
-      right: -100%;
-    }
   
-    50%,100% {
-      right: 100%;
-    }
-  }
-  
-  .login-box a span:nth-child(4) {
-    bottom: -100%;
-    left: 0;
-    width: 2px;
-    height: 100%;
-    background: linear-gradient(360deg, transparent, #fff);
-    animation: btn-anim4 1.5s linear infinite;
-    animation-delay: 1.125s
-  }
-  
-  @keyframes btn-anim4 {
-    0% {
-      bottom: -100%;
-    }
-  
-    50%,100% {
-      bottom: 100%;
-    }
-  }
-  
-  .login-box p:last-child {
-    color: #aaa;
-    font-size: 14px;
-  }
-  
-  .login-box a.a2 {
-    color: #fff;
-    text-decoration: none;
-  }
-  
-  .login-box a.a2:hover {
-    background: transparent;
-    color: #aaa;
-    border-radius: 5px;
-  }

@@ -41,17 +41,17 @@ export default function Footer() {
           <Col md="3">
             <Nav>
               <NavItem>
-                <NavLink href="https://creative-tim.com/contact-us?ref=blkdsr-footer">
+                <NavLink>
                   Contact Us
                 </NavLink>
               </NavItem>
               <NavItem>
-                <NavLink href="https://creative-tim.com/about-us?ref=blkdsr-footer">
+                <NavLink >
                   About Us
                 </NavLink>
               </NavItem>
               <NavItem>
-                <NavLink href="https://creative-tim.com/blog?ref=blkdsr-footer">
+                <NavLink >
                   Blog
                 </NavLink>
               </NavItem>
@@ -68,7 +68,7 @@ export default function Footer() {
               <Button
                 className="btn-icon btn-neutral btn-round btn-simple"
                 color="default"
-                href="https://twitter.com/creativetim"
+                href="https://twitter.com"
                 id="tooltip622135962"
                 target="_blank"
               >

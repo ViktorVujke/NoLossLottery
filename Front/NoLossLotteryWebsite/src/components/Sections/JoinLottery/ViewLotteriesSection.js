@@ -8,7 +8,7 @@ const ResponsiveContainer = styled.div`
   margin: 0 auto;
 
   @media (min-width: 1024px) {
-    max-width: 1000px;
+    max-width: 80%;
   }
 
   @media (max-width: 768px) {
