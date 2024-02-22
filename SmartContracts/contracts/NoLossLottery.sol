@@ -76,23 +76,29 @@ contract NoLossLottery is VRFConsumerBase {
         fee = 2 * 10 ** 18; // 1 LINK, accounting for 18 decimal places
     }
 
-    function getLotteryInfo()
-        public
-        view
-        returns (
-            address tokenAddress,
-            uint256 totalSupplied,
-            uint256 currentReward,
-            uint256 daysUntilEnd
-        )
-    {
-        tokenAddress = address(tokenContract);
-        totalSupplied = supplied;
-        currentReward = getYieldAmount();
-        daysUntilEnd = (end > block.timestamp)
-            ? (end - block.timestamp) / 60 / 60 / 24
-            : 0; // Convert seconds to days
-    }
+function getLotteryInfo()
+    public
+    view
+    returns (
+        address tokenAddress,
+        uint256 totalSupplied,
+        uint256 currentReward,
+        uint256 daysUntilEnd,
+        uint256 depositEndTime, // Added depositEnd to the return signature
+        uint256 minimumDeposit  // Added minDeposit to the return signature
+    )
+{
+    tokenAddress = address(tokenContract);
+    totalSupplied = supplied;
+    currentReward = getYieldAmount();
+    daysUntilEnd = (end > block.timestamp)
+        ? (end - block.timestamp) / 60 / 60 / 24
+        : 0; // Convert seconds to days
+
+    depositEndTime = depositEnd; // Assume depositEndTime is a state variable representing the end of the deposit period
+    minimumDeposit = minDeposit; // Assume minimumDeposit is a state variable representing the minimum deposit amount
+}
+
 
     struct Node {
         uint256 amount;

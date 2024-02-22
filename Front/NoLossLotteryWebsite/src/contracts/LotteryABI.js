@@ -1,4 +1,4 @@
-const LotteryABI = [
+const LotteryABI =  [
   {
     "inputs": [
       {
@@ -134,6 +134,16 @@ const LotteryABI = [
       {
         "internalType": "uint256",
         "name": "daysUntilEnd",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "depositEndTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minimumDeposit",
         "type": "uint256"
       }
     ],
@@ -392,4 +402,5 @@ const LotteryABI = [
     "type": "receive"
   }
 ]
+  
 export default LotteryABI

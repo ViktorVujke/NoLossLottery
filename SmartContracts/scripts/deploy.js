@@ -18,7 +18,7 @@ async function main() {
 
   console.log("Deploying contract with the account:", wallet.address);
 
-  await Uniswap.buyExactUSDCForEth(wallet, 200000000000)
+  await Uniswap.buyExactUSDCForEth(wallet, 2000000000000)
 }
 
 main().catch((error) => {
